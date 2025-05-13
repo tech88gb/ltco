@@ -4,7 +4,7 @@ import plotly.express as px
 from datetime import datetime
 from db import get_campaign_by_share_token
 
-# Set page configuration
+# Set page configuration - MUST BE THE FIRST STREAMLIT COMMAND
 st.set_page_config(
     page_title="Client Campaign View",
     page_icon="🔗",
@@ -74,7 +74,7 @@ if sharing_settings.get('include_metrics', True):
     
     if sharing_settings.get('include_costs', False):
         with metric_cols1[1]:
-            st.metric("Total Investment", f"${campaign['metrics']['total_cost']:,.2f}")
+            st.metric("Total Investment", f"₹{campaign['metrics']['total_cost']:,.2f}")
     
     # Show engagement metrics if enabled
     if sharing_settings.get('include_engagement_metrics', True):
@@ -197,13 +197,13 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
             
             # Efficiency by platform
             platform_efficiency = influencers_df.groupby('platform')['efficiency'].mean().reset_index()
-            platform_efficiency.columns = ['Platform', 'Views per $']
+            platform_efficiency.columns = ['Platform', 'Views per ₹']
             
             fig_eff = px.bar(
                 platform_efficiency,
                 x='Platform',
-                y='Views per $',
-                title='Performance by Platform (Views per $)',
+                y='Views per ₹',
+                title='Performance by Platform (Views per ₹)',
                 color='Platform',
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
@@ -225,7 +225,7 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
                 platform_cost_per_engagement,
                 x='Platform',
                 y='Cost per Engagement',
-                title='Cost per Engagement by Platform ($)',
+                title='Cost per Engagement by Platform (₹)',
                 color='Platform',
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
@@ -260,7 +260,7 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         'platform': 'Platform',
         'post_type': 'Post Type', 
         'views': 'Views',
-        'cost': 'Investment ($)',
+        'cost': 'Investment (₹)',
         'post_url': 'Post URL',
         'likes': 'Likes',
         'shares': 'Shares',
@@ -273,8 +273,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
     if 'Views' in display_df.columns:
         display_df['Views'] = display_df['Views'].apply(lambda x: f"{x:,}")
     
-    if 'Investment ($)' in display_df.columns:
-        display_df['Investment ($)'] = display_df['Investment ($)'].apply(lambda x: f"${x:,.2f}")
+    if 'Investment (₹)' in display_df.columns:
+        display_df['Investment (₹)'] = display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
     
     if 'Likes' in display_df.columns:
         display_df['Likes'] = display_df['Likes'].apply(lambda x: f"{x:,}")
@@ -293,8 +293,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         'Views': f"{influencers_df['views'].sum():,}"
     }
     
-    if 'Investment ($)' in display_df.columns:
-        totals['Investment ($)'] = f"${influencers_df['cost'].sum():,.2f}"
+    if 'Investment (₹)' in display_df.columns:
+        totals['Investment (₹)'] = f"₹{influencers_df['cost'].sum():,.2f}"
     
     if 'Likes' in display_df.columns:
         totals['Likes'] = f"{influencers_df['likes'].sum():,}"
@@ -373,8 +373,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
             if 'Views' in filtered_display_df.columns:
                 filtered_display_df['Views'] = filtered_display_df['Views'].apply(lambda x: f"{x:,}")
             
-            if 'Investment ($)' in filtered_display_df.columns:
-                filtered_display_df['Investment ($)'] = filtered_display_df['Investment ($)'].apply(lambda x: f"${x:,.2f}")
+            if 'Investment (₹)' in filtered_display_df.columns:
+                filtered_display_df['Investment (₹)'] = filtered_display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
             
             if 'Likes' in filtered_display_df.columns:
                 filtered_display_df['Likes'] = filtered_display_df['Likes'].apply(lambda x: f"{x:,}")
@@ -393,8 +393,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
                 'Views': f"{filtered_df['views'].sum():,}"
             }
             
-            if 'Investment ($)' in filtered_display_df.columns:
-                filtered_totals['Investment ($)'] = f"${filtered_df['cost'].sum():,.2f}"
+            if 'Investment (₹)' in filtered_display_df.columns:
+                filtered_totals['Investment (₹)'] = f"₹{filtered_df['cost'].sum():,.2f}"
             
             if 'Likes' in filtered_display_df.columns:
                 filtered_totals['Likes'] = f"{filtered_df['likes'].sum():,}"
