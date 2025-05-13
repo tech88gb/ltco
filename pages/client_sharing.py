@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -436,7 +435,7 @@ with tab2:
 
 # Footer
 st.markdown("---")
-=======
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -874,5 +873,4 @@ with tab2:
 
 # Footer
 st.markdown("---")
->>>>>>> 9635eade44fc26bafa570e03c41c956b8cbd9b2f
 st.markdown("Campaign Manager v1.0 | Client Sharing Module")
