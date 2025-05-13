@@ -11,9 +11,8 @@ st.set_page_config(
     layout="wide"
 )
 
-# Get the share token from the query params
-query_params = st.experimental_get_query_params()
-token = query_params.get('token', [None])[0]
+# Get the share token from the query params using the non-experimental API
+token = st.query_params.get("token", None)
 
 st.title("Client Campaign View")
 
@@ -39,6 +38,18 @@ sharing_settings = campaign.get('sharing_settings', {
     'custom_message': ''
 })
 
+# Use default settings if sharing_settings is None
+if sharing_settings is None:
+    sharing_settings = {
+        'include_dashboard': True,
+        'include_metrics': True,
+        'include_costs': False,
+        'include_influencer_details': True,
+        'include_engagement_metrics': True,
+        'client_name': '',
+        'custom_message': ''
+    }
+
 # Show client header
 st.subheader("Campaign Report")
 st.write(f"**Campaign:** {campaign['name']}")
@@ -63,7 +74,7 @@ if sharing_settings.get('include_metrics', True):
     
     if sharing_settings.get('include_costs', False):
         with metric_cols1[1]:
-            st.metric("Total Investment", f"₹{campaign['metrics']['total_cost']:,.2f}")
+            st.metric("Total Investment", f"${campaign['metrics']['total_cost']:,.2f}")
     
     # Show engagement metrics if enabled
     if sharing_settings.get('include_engagement_metrics', True):
@@ -147,24 +158,19 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
             st.plotly_chart(fig_engagement, use_container_width=True)
         
         with engagement_cols[1]:
-            # Calculate engagement rate by platform
-            influencers_df['engagement_rate'] = (
-                (influencers_df['likes'] + influencers_df['shares'] + influencers_df['comments']) / 
-                influencers_df['views'].apply(lambda x: max(x, 1)) * 100  # Convert to percentage
-            )
+            # Views by platform
+            platform_views = influencers_df.groupby('platform')['views'].sum().reset_index()
             
-            platform_engagement_rate = influencers_df.groupby('platform')['engagement_rate'].mean().reset_index()
-            
-            fig_engagement_rate = px.bar(
-                platform_engagement_rate,
+            fig_views = px.bar(
+                platform_views,
                 x='platform',
-                y='engagement_rate',
-                title='Engagement Rate by Platform (%)',
+                y='views',
+                title='Views by Platform',
+                labels={'platform': 'Platform', 'views': 'Views'},
                 color='platform',
-                labels={'engagement_rate': 'Engagement Rate (%)', 'platform': 'Platform'},
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
-            st.plotly_chart(fig_engagement_rate, use_container_width=True)
+            st.plotly_chart(fig_views, use_container_width=True)
     
     # Show cost information if enabled
     if sharing_settings.get('include_costs', False):
@@ -191,13 +197,13 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
             
             # Efficiency by platform
             platform_efficiency = influencers_df.groupby('platform')['efficiency'].mean().reset_index()
-            platform_efficiency.columns = ['Platform', 'Views per ₹']
+            platform_efficiency.columns = ['Platform', 'Views per $']
             
             fig_eff = px.bar(
                 platform_efficiency,
                 x='Platform',
-                y='Views per ₹',
-                title='Performance by Platform (Views per ₹)',
+                y='Views per $',
+                title='Performance by Platform (Views per $)',
                 color='Platform',
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
@@ -207,43 +213,23 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
         if sharing_settings.get('include_engagement_metrics', True):
             st.subheader("Cost Efficiency Analysis")
             
-            efficiency_cols = st.columns(2)
+            # Calculate cost per engagement
+            influencers_df['total_engagements'] = influencers_df['likes'] + influencers_df['shares'] + influencers_df['comments']
             
-            with efficiency_cols[0]:
-                # Calculate cost per like
-                platform_cost_per_like = influencers_df.groupby('platform').apply(
-                    lambda x: x['cost'].sum() / max(x['likes'].sum(), 1)
-                ).reset_index()
-                platform_cost_per_like.columns = ['Platform', 'Cost per Like']
-                
-                fig_cpl = px.bar(
-                    platform_cost_per_like,
-                    x='Platform',
-                    y='Cost per Like',
-                    title='Cost per Like by Platform (₹)',
-                    color='Platform',
-                    color_discrete_sequence=px.colors.qualitative.Pastel
-                )
-                st.plotly_chart(fig_cpl, use_container_width=True)
+            platform_cost_per_engagement = influencers_df.groupby('platform').apply(
+                lambda x: x['cost'].sum() / max(x['total_engagements'].sum(), 1)
+            ).reset_index()
+            platform_cost_per_engagement.columns = ['Platform', 'Cost per Engagement']
             
-            with efficiency_cols[1]:
-                # Calculate cost per engagement
-                influencers_df['total_engagements'] = influencers_df['likes'] + influencers_df['shares'] + influencers_df['comments']
-                
-                platform_cost_per_engagement = influencers_df.groupby('platform').apply(
-                    lambda x: x['cost'].sum() / max(x['total_engagements'].sum(), 1)
-                ).reset_index()
-                platform_cost_per_engagement.columns = ['Platform', 'Cost per Engagement']
-                
-                fig_cpe = px.bar(
-                    platform_cost_per_engagement,
-                    x='Platform',
-                    y='Cost per Engagement',
-                    title='Cost per Engagement by Platform (₹)',
-                    color='Platform',
-                    color_discrete_sequence=px.colors.qualitative.Pastel
-                )
-                st.plotly_chart(fig_cpe, use_container_width=True)
+            fig_cpe = px.bar(
+                platform_cost_per_engagement,
+                x='Platform',
+                y='Cost per Engagement',
+                title='Cost per Engagement by Platform ($)',
+                color='Platform',
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            st.plotly_chart(fig_cpe, use_container_width=True)
 
 # Show influencer details if enabled
 if sharing_settings.get('include_influencer_details', True) and campaign['influencers']:
@@ -274,7 +260,7 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         'platform': 'Platform',
         'post_type': 'Post Type', 
         'views': 'Views',
-        'cost': 'Investment (₹)',
+        'cost': 'Investment ($)',
         'post_url': 'Post URL',
         'likes': 'Likes',
         'shares': 'Shares',
@@ -287,8 +273,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
     if 'Views' in display_df.columns:
         display_df['Views'] = display_df['Views'].apply(lambda x: f"{x:,}")
     
-    if 'Investment (₹)' in display_df.columns:
-        display_df['Investment (₹)'] = display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
+    if 'Investment ($)' in display_df.columns:
+        display_df['Investment ($)'] = display_df['Investment ($)'].apply(lambda x: f"${x:,.2f}")
     
     if 'Likes' in display_df.columns:
         display_df['Likes'] = display_df['Likes'].apply(lambda x: f"{x:,}")
@@ -307,8 +293,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         'Views': f"{influencers_df['views'].sum():,}"
     }
     
-    if 'Investment (₹)' in display_df.columns:
-        totals['Investment (₹)'] = f"₹{influencers_df['cost'].sum():,.2f}"
+    if 'Investment ($)' in display_df.columns:
+        totals['Investment ($)'] = f"${influencers_df['cost'].sum():,.2f}"
     
     if 'Likes' in display_df.columns:
         totals['Likes'] = f"{influencers_df['likes'].sum():,}"
@@ -387,8 +373,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
             if 'Views' in filtered_display_df.columns:
                 filtered_display_df['Views'] = filtered_display_df['Views'].apply(lambda x: f"{x:,}")
             
-            if 'Investment (₹)' in filtered_display_df.columns:
-                filtered_display_df['Investment (₹)'] = filtered_display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
+            if 'Investment ($)' in filtered_display_df.columns:
+                filtered_display_df['Investment ($)'] = filtered_display_df['Investment ($)'].apply(lambda x: f"${x:,.2f}")
             
             if 'Likes' in filtered_display_df.columns:
                 filtered_display_df['Likes'] = filtered_display_df['Likes'].apply(lambda x: f"{x:,}")
@@ -407,8 +393,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
                 'Views': f"{filtered_df['views'].sum():,}"
             }
             
-            if 'Investment (₹)' in filtered_display_df.columns:
-                filtered_totals['Investment (₹)'] = f"₹{filtered_df['cost'].sum():,.2f}"
+            if 'Investment ($)' in filtered_display_df.columns:
+                filtered_totals['Investment ($)'] = f"${filtered_df['cost'].sum():,.2f}"
             
             if 'Likes' in filtered_display_df.columns:
                 filtered_totals['Likes'] = f"{filtered_df['likes'].sum():,}"
