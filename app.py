@@ -5,6 +5,8 @@ import time
 from datetime import datetime
 from db import save_campaign, get_campaigns, delete_campaign, generate_numeric_id, delete_influencer
 
+
+
 # Set page configuration
 st.set_page_config(
     page_title="Campaign Manager",
@@ -12,6 +14,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+
 
 # Initialize session state variables if they don't exist
 if 'campaigns' not in st.session_state:
@@ -100,16 +104,33 @@ with st.sidebar:
     # Display existing campaigns with delete option
     st.write("Select a campaign:")
     
+    # Add this CSS fix for mobile sidebar columns
+    st.markdown("""
+    <style>
+    /* Fix for mobile sidebar columns */
+    @media (max-width: 768px) {
+        [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {
+            flex-direction: column;
+        }
+        [data-testid="stSidebar"] [data-testid="stHorizontalBlock"] > div {
+            width: 100%;
+            margin-bottom: 0.25rem;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Keep the existing campaigns loop
     for campaign_id, campaign_data in st.session_state.campaigns.items():
-        col1, col2 = st.columns([3, 2])
-        
-        with col1:
-            if st.button(f"{campaign_data['name']}", key=f"select_{campaign_id}"):
+        # Use an expander to group each campaign with its delete button
+        with st.expander(f"{campaign_data['name']}", expanded=False):
+            # Campaign select button
+            if st.button("Select this campaign", key=f"select_{campaign_id}", use_container_width=True):
                 st.session_state.current_campaign_id = campaign_id
                 st.rerun()
-        
-        with col2:
-            if st.button("Delete", key=f"delete_{campaign_id}", help="Delete this campaign"):
+            
+            # Delete button
+            if st.button("Delete this campaign", key=f"delete_{campaign_id}", use_container_width=True):
                 st.session_state.confirm_delete = campaign_id
                 st.rerun()
     
@@ -171,7 +192,7 @@ else:
             st.write(f"Share Code: {current_campaign['share_token']}")
         
         # Campaign tabs
-        tab1, tab2, tab3 = st.tabs(["Dashboard", "Influencers", "Client Sharing"])
+        tab1, tab2, tab3 = st.tabs([" Dashboard", " Influencers", " Client Sharing"])
         
         with tab1:
             st.header("Campaign Dashboard")
@@ -470,5 +491,13 @@ else:
                     st.table(pd.DataFrame(influencer_data))
 
 # Footer
-st.markdown("---")
-st.markdown("Campaign Manager v1.0 | Built with Streamlit")
+def add_footer():
+    """Add a professional footer to the application"""
+    st.markdown("""
+    <div style="background-color: #F3F4F6; padding: 1rem; text-align: center; border-radius: 8px; margin-top: 2rem;">
+        <p style="margin: 0; color: #6B7280; font-size: 0.9rem;">Campaign Manager v1.0 | Built with Streamlit</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Add this at the very end of your app
+add_footer()
