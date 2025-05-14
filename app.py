@@ -434,9 +434,37 @@ else:
             st.subheader("Share with Clients")
             st.write("Your clients can view a read-only version of this campaign using the following:")
             
-            # Updated share link to use the new client_view page
-            share_link = f"/client_view?token={current_campaign['share_token']}"
-            st.code(share_link)
+            # Generate full shareable link with domain
+            full_share_link = f"https://ltcomedia.streamlit.app/client_view?token={current_campaign['share_token']}"
+
+            # Display the link in a more user-friendly way
+            st.subheader("Shareable Link")
+            st.write("Share this link with your client to give them access to the campaign:")
+
+            # Create a container for the link with a cleaner UI
+            st.markdown(
+                f"""
+                <div style="display: flex; align-items: center; padding: 10px; background-color: #f0f2f6; border-radius: 5px; margin-bottom: 10px;">
+                    <div style="flex-grow: 1; padding: 8px; background-color: white; border-radius: 4px; border: 1px solid #ddd; overflow: auto;">
+                        <code style="white-space: nowrap;">{full_share_link}</code>
+                    </div>
+                </div>
+                <p style="font-size: 0.8rem; color: #666;">Click the link above to select it, then copy using Ctrl+C (or Cmd+C on Mac)</p>
+                """,
+                unsafe_allow_html=True
+            )
+
+            # Add a direct link option
+            st.markdown(
+                f"""
+                <a href="{full_share_link}" target="_blank" style="display: inline-block; margin-top: 5px; text-decoration: none;">
+                    <button style="background-color: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+                        Open Client View
+                    </button>
+                </a>
+                """,
+                unsafe_allow_html=True
+            )
             
             st.write("Client view will include:")
             st.checkbox("Campaign Overview", value=True, disabled=True)

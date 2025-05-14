@@ -60,11 +60,31 @@ with tab1:
     
     with col1:
         current_token = current_campaign.get('share_token', str(uuid.uuid4())[:8])
+        st.subheader("Share Token")
         st.code(current_token, language="text")
         
-        # Generate shareable link
-        share_link = f"/client_view?token={current_token}"
-        st.text_input("Shareable Link", share_link)
+        # Generate full shareable link with domain
+        full_share_link = f"https://ltcomedia.streamlit.app/client_view?token={current_token}"
+        
+        # Display link
+        st.subheader("Shareable Link")
+        
+        # Display the full URL in a code block
+        st.code(full_share_link, language="text")
+        
+        # Add a direct link option
+        st.markdown(
+            f"""
+            <a href="{full_share_link}" target="_blank" style="display: inline-block; margin-top: 5px; text-decoration: none;">
+                <button style="background-color: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+                    Open Client View
+                </button>
+            </a>
+            """,
+            unsafe_allow_html=True
+        )
+        
+        st.info("Share this link with your client to give them access to the campaign view")
     
     with col2:
         if st.button("Generate New Token"):
