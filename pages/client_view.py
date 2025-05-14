@@ -199,19 +199,32 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
             st.plotly_chart(fig_engagement, use_container_width=True)
         
         with engagement_cols[1]:
-            # Views by platform
-            platform_views = influencers_df.groupby('platform')['views'].sum().reset_index()
+            # Engagement breakdown by type
+            engagement_by_type = influencers_df.groupby('post_type').agg({
+                'likes': 'sum',
+                'shares': 'sum',
+                'comments': 'sum'
+            }).reset_index()
             
-            fig_views = px.bar(
-                platform_views,
-                x='platform',
-                y='views',
-                title='Views by Platform',
-                labels={'platform': 'Platform', 'views': 'Views'},
-                color='platform',
+            # Reshape for plotting
+            engagement_type_melted = pd.melt(
+                engagement_by_type,
+                id_vars=['post_type'],
+                value_vars=['likes', 'shares', 'comments'],
+                var_name='Engagement Type',
+                value_name='Count'
+            )
+            
+            fig_engagement_type = px.bar(
+                engagement_type_melted,
+                x='post_type',
+                y='Count',
+                color='Engagement Type',
+                title='Engagement by Post Type',
+                barmode='group',
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
-            st.plotly_chart(fig_views, use_container_width=True)
+            st.plotly_chart(fig_engagement_type, use_container_width=True)
     
     # Show cost information if enabled
     if sharing_settings.get('include_costs', False):
@@ -263,13 +276,15 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
     with filter_cols[0]:
         filter_platform = st.selectbox(
             "Filter by Platform",
-            ["All"] + list(influencers_df['platform'].unique())
+            ["All"] + list(influencers_df['platform'].unique()),
+            key="platform_filter"
         )
     
     with filter_cols[1]:
         filter_post_type = st.selectbox(
             "Filter by Post Type",
-            ["All"] + list(influencers_df['post_type'].unique())
+            ["All"] + list(influencers_df['post_type'].unique()),
+            key="post_type_filter"
         )
     
     with filter_cols[2]:
@@ -279,7 +294,7 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         if sharing_settings.get('include_costs', False):
             sort_options.append("Investment")
         
-        sort_by = st.selectbox("Sort By", sort_options)
+        sort_by = st.selectbox("Sort By", sort_options, key="sort_by_filter")
     
     # Apply filters and sorting
     filtered_df = influencers_df.copy()
@@ -316,7 +331,7 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         if sharing_settings.get('include_costs', False):
             display_columns.append('cost')
         
-        if 'post_url' in filtered_df.columns:
+        if 'post_url' in filtered_df.columns and 'post_url' in filtered_df.columns[0]:
             display_columns.append('post_url')
         
         # Create a clean display dataframe with only selected columns
@@ -401,7 +416,7 @@ st.write("If you have any questions about this report, please contact your campa
 # Custom footer that replaces Streamlit's default footer
 st.markdown("""
 <div style="background-color: #F3F4F6; padding: 1rem; text-align: center; border-radius: 8px; margin-top: 2rem;">
-    <p style="margin: 0; color: #6B7280; font-size: 0.9rem;">Campaign Report | Powered by ltcomedia</p>
+    <p style="margin: 0; color: #6B7280; font-size: 0.9rem;">Campaign Report | Powered by Campaign Manager</p>
 </div>
 """, unsafe_allow_html=True)
 
