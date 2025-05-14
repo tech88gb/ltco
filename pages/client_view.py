@@ -8,18 +8,50 @@ from db import get_campaign_by_share_token
 st.set_page_config(
     page_title="Client Campaign View",
     page_icon="🔗",
-    layout="wide"
+    layout="wide",
+    # Hide the sidebar and menu to prevent navigation to other pages
+    initial_sidebar_state="collapsed",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
 )
 
-# Hide Streamlit's default GitHub link and menu
-hide_streamlit_elements = """
+# Add CSS to hide the sidebar completely and remove other navigation elements
+st.markdown("""
 <style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
+    /* Hide sidebar */
+    [data-testid="collapsedControl"] {
+        display: none;
+    }
+    
+    /* Hide full-screen button */
+    .fullScreenFrame > div {
+        display: none !important;
+    }
+    
+    /* Hide Streamlit menu and footer */
+    #MainMenu {
+        visibility: hidden;
+    }
+    footer {
+        visibility: hidden;
+    }
+    
+    /* Make sure the sidebar is fully collapsed */
+    section[data-testid="stSidebar"] {
+        width: 0px !important;
+        margin-right: 0px !important;
+        display: none !important;
+    }
+    
+    /* Prevent interaction with sidebar */
+    .stSidebar {
+        pointer-events: none;
+    }
 </style>
-"""
-st.markdown(hide_streamlit_elements, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # Get the share token from the query params using the non-experimental API
 token = st.query_params.get("token", None)
@@ -439,5 +471,20 @@ st.download_button(
 st.subheader("Contact Information")
 st.write("If you have any questions about this report, please contact your campaign manager.")
 
-st.markdown("---")
-st.markdown("Client View | Powered by Campaign Manager")
+# Custom footer that replaces Streamlit's default footer
+st.markdown("""
+<div style="background-color: #F3F4F6; padding: 1rem; text-align: center; border-radius: 8px; margin-top: 2rem;">
+    <p style="margin: 0; color: #6B7280; font-size: 0.9rem;">Campaign Report | Powered by Campaign Manager</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Add a hidden back button that we'll control with CSS
+# This is just for better UX in case someone needs to go back
+st.markdown("""
+<div style="position: fixed; top: 10px; right: 10px;">
+    <a href="javascript:history.back()" style="text-decoration: none; color: #666; background-color: #f5f5f5; 
+       padding: 5px 10px; border-radius: 4px; font-size: 14px;">
+        Back to Campaign Manager
+    </a>
+</div>
+""", unsafe_allow_html=True)
