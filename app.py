@@ -15,6 +15,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Hide Streamlit's default GitHub link and menu
+hide_streamlit_elements = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+</style>
+"""
+st.markdown(hide_streamlit_elements, unsafe_allow_html=True)
+
 
 
 # Initialize session state variables if they don't exist
@@ -504,4 +514,4 @@ else:
                     st.table(pd.DataFrame(influencer_data))
 #footer
 st.markdown("---")
-st.markdown("Campaign Manager v1.0 | Influencer Management")
+st.markdown("Campaign Manager v1.0 | Overview")
