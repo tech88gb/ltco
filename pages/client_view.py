@@ -11,6 +11,16 @@ st.set_page_config(
     layout="wide"
 )
 
+# Hide Streamlit's default GitHub link and menu
+hide_streamlit_elements = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+</style>
+"""
+st.markdown(hide_streamlit_elements, unsafe_allow_html=True)
+
 # Get the share token from the query params using the non-experimental API
 token = st.query_params.get("token", None)
 

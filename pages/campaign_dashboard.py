@@ -12,6 +12,16 @@ st.set_page_config(
     layout="wide"
 )
 
+# Hide Streamlit's default GitHub link and menu
+hide_streamlit_elements = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+</style>
+"""
+st.markdown(hide_streamlit_elements, unsafe_allow_html=True)
+
 # Check if session state is initialized
 if 'campaigns' not in st.session_state or 'current_campaign_id' not in st.session_state:
     st.error("Please navigate to the main page first to select or create a campaign.")
@@ -326,4 +336,4 @@ else:
 
 # Footer
 st.markdown("---")
-st.markdown("Campaign Manager v1.0 | Analytics Dashboard")
+st.markdown("Campaign Manager v1.0 | Campaign Dashboard")
