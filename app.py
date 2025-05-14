@@ -120,55 +120,68 @@ with st.sidebar:
     </style>
     """, unsafe_allow_html=True)
     
+    # Track which expander should be open for delete confirmation
+    if 'open_expander' not in st.session_state:
+        st.session_state.open_expander = None
+    
+    # If we have a campaign to delete, remember to keep its expander open
+    if hasattr(st.session_state, 'confirm_delete'):
+        st.session_state.open_expander = st.session_state.confirm_delete
+    
     # Keep the existing campaigns loop
     for campaign_id, campaign_data in st.session_state.campaigns.items():
+        # Check if this expander should be open (for delete confirmation)
+        is_open = st.session_state.open_expander == campaign_id
+        
         # Use an expander to group each campaign with its delete button
-        with st.expander(f"{campaign_data['name']}", expanded=False):
-            # Campaign select button
-            if st.button("Select this campaign", key=f"select_{campaign_id}", use_container_width=True):
-                st.session_state.current_campaign_id = campaign_id
-                st.rerun()
-            
-            # Delete button
-            if st.button("Delete this campaign", key=f"delete_{campaign_id}", use_container_width=True):
-                st.session_state.confirm_delete = campaign_id
-                st.rerun()
-    
-    # Delete confirmation
-    if hasattr(st.session_state, 'confirm_delete'):
-        campaign_to_delete = st.session_state.confirm_delete
-        campaign_name = st.session_state.campaigns[campaign_to_delete]['name']
-        
-        st.warning(f"Are you sure you want to delete '{campaign_name}'? This cannot be undone.")
-            
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Yes, Delete"):
-                try:
-                    # Delete from database
-                    delete_campaign(st.session_state.campaigns[campaign_to_delete]['id'])
-                    
-                    # Delete from session state
-                    del st.session_state.campaigns[campaign_to_delete]
-                    
-                    # Reset current campaign if it was the deleted one
-                    if st.session_state.current_campaign_id == campaign_to_delete:
-                        st.session_state.current_campaign_id = None
-                    
-                    # Remove confirmation state
-                    del st.session_state.confirm_delete
-                    
-                    st.success(f"Campaign '{campaign_name}' deleted!")
+        with st.expander(f"{campaign_data['name']}", expanded=is_open):
+            # Show delete confirmation within the expander if it matches
+            if hasattr(st.session_state, 'confirm_delete') and st.session_state.confirm_delete == campaign_id:
+                st.warning("Are you sure you want to delete? This cannot be undone.")
+                
+                confirm_col1, confirm_col2 = st.columns(2)
+                with confirm_col1:
+                    if st.button("Yes, Delete", key=f"confirm_delete_{campaign_id}"):
+                        try:
+                            # Delete from database
+                            delete_campaign(st.session_state.campaigns[campaign_id]['id'])
+                            
+                            # Delete from session state
+                            del st.session_state.campaigns[campaign_id]
+                            
+                            # Reset current campaign if it was the deleted one
+                            if st.session_state.current_campaign_id == campaign_id:
+                                st.session_state.current_campaign_id = None
+                            
+                            # Remove confirmation state
+                            del st.session_state.confirm_delete
+                            st.session_state.open_expander = None
+                            
+                            st.success(f"Campaign '{campaign_data['name']}' deleted!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error deleting campaign: {str(e)}")
+                
+                with confirm_col2:
+                    if st.button("Cancel", key=f"cancel_delete_{campaign_id}"):
+                        # Remove confirmation state
+                        del st.session_state.confirm_delete
+                        st.session_state.open_expander = None
+                        st.rerun()
+            else:
+                # Campaign select button
+                if st.button("Select this campaign", key=f"select_{campaign_id}", use_container_width=True):
+                    st.session_state.current_campaign_id = campaign_id
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Error deleting campaign: {str(e)}")
-        
-        with col2:
-            if st.button("Cancel"):
-                # Remove confirmation state
-                del st.session_state.confirm_delete
-                st.rerun()
-
+                
+                # Delete button
+                if st.button("Delete this campaign", key=f"delete_{campaign_id}", use_container_width=True):
+                    st.session_state.confirm_delete = campaign_id
+                    st.session_state.open_expander = campaign_id
+                    st.rerun()
+    
+  
+   
 # Main content area
 if not st.session_state.campaigns:
     st.info("Welcome to Campaign Manager! Get started by creating a new campaign in the sidebar.")
@@ -489,15 +502,6 @@ else:
                     
                     # Display as table
                     st.table(pd.DataFrame(influencer_data))
-
-# Footer
-def add_footer():
-    """Add a professional footer to the application"""
-    st.markdown("""
-    <div style="background-color: #F3F4F6; padding: 1rem; text-align: center; border-radius: 8px; margin-top: 2rem;">
-        <p style="margin: 0; color: #6B7280; font-size: 0.9rem;">Campaign Manager v1.0 | Built with Streamlit</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-# Add this at the very end of your app
-add_footer()
+#footer
+st.markdown("---")
+st.markdown("Campaign Manager v1.0 | Influencer Management")
