@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 from db import save_campaign, delete_influencer, generate_numeric_id
 
-# Set page configuration
+# Set page configuration - MUST BE THE FIRST STREAMLIT COMMAND
 st.set_page_config(
     page_title="Influencer Management",
     page_icon="👤",
@@ -98,7 +98,7 @@ with tab1:
         
         with col2:
             views = st.number_input("Views/Impressions", min_value=0, step=1000, value=st.session_state.im_form_views, key="im_views_input")
-            cost = st.number_input("Cost ($)", min_value=0.0, step=100.0, value=st.session_state.im_form_cost, key="im_cost_input")
+            cost = st.number_input("Cost (₹)", min_value=0.0, step=100.0, value=st.session_state.im_form_cost, key="im_cost_input")
         
         # Add engagement metrics
         st.subheader("Engagement Metrics")
@@ -245,7 +245,7 @@ with tab2:
                     
                     # Ensure old_cost is a float
                     old_cost = float(influencer["cost"])
-                    new_cost = st.number_input("Cost ($)", min_value=0.0, value=old_cost, step=100.0, key=f"cost_{influencer['id']}")
+                    new_cost = st.number_input("Cost (₹)", min_value=0.0, value=old_cost, step=100.0, key=f"cost_{influencer['id']}")
                 
                 # Engagement metrics
                 engagement_cols = st.columns(3)
