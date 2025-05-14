@@ -15,6 +15,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Hide Streamlit's default GitHub link and menu
+hide_streamlit_elements = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+</style>
+"""
+st.markdown(hide_streamlit_elements, unsafe_allow_html=True)
+
 
 
 # Initialize session state variables if they don't exist
@@ -502,6 +512,39 @@ else:
                     
                     # Display as table
                     st.table(pd.DataFrame(influencer_data))
-#footer
-st.markdown("---")
-st.markdown("Campaign Manager v1.0 | Influencer Management")
+
+def add_footer():
+    # Detect if page is empty based on your app's state
+    # Adjust this condition based on your application's specific logic
+    is_empty_page = len(st.session_state.get('campaigns', {})) == 0 or st.session_state.get('current_campaign_id') is None
+    
+    # Add CSS for footer positioning
+    footer_css = """
+    <style>
+        /* Footer styling */
+        .footer-container {
+            margin-top: 50px;  /* Space above footer */
+            text-align: center;
+        }
+        
+        /* For empty pages - push footer to bottom */
+        .empty-page-spacer {
+            min-height: calc(100vh - 250px);
+        }
+    </style>
+    """
+    st.markdown(footer_css, unsafe_allow_html=True)
+    
+    # Add spacer for empty pages to push footer down
+    if is_empty_page:
+        st.markdown('<div class="empty-page-spacer"></div>', unsafe_allow_html=True)
+    else:
+        # For pages with content, add extra space to prevent overlap with charts
+        st.markdown('<div style="margin-top: 50px;"></div>', unsafe_allow_html=True)
+    
+    # Add the footer
+    st.markdown('<div class="footer-container">', unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown("Campaign Manager v1.0")
+    st.markdown('</div>', unsafe_allow_html=True)
+add_footer()
