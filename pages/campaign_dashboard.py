@@ -336,4 +336,4 @@ else:
 
 # Footer
 st.markdown("---")
-st.markdown("Campaign Manager v1.0 | Analytics Dashboard")
+st.markdown("Campaign Manager v1.0 | Campaign Dashboard")
