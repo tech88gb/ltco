@@ -56,8 +56,6 @@ st.markdown("""
 # Get the share token from the query params using the non-experimental API
 token = st.query_params.get("token", None)
 
-st.title("Client Campaign View")
-
 if not token:
     st.error("No share token provided in the URL.")
     st.stop()
@@ -68,6 +66,9 @@ campaign = get_campaign_by_share_token(token)
 if not campaign:
     st.error("Invalid or expired share token. Please check your link.")
     st.stop()
+
+# Use campaign name as the page title
+st.title(f"{campaign['name']}")
 
 # Get sharing settings (with defaults)
 sharing_settings = campaign.get('sharing_settings', {
@@ -93,9 +94,6 @@ if sharing_settings is None:
     }
 
 # Show client header
-st.subheader("Campaign Report")
-st.write(f"**Campaign:** {campaign['name']}")
-
 if sharing_settings.get('client_name'):
     st.write(f"**Prepared for:** {sharing_settings['client_name']}")
 
@@ -137,22 +135,8 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
     influencers_df = pd.DataFrame(campaign['influencers'])
     
     chart_cols = st.columns(2)
-    with chart_cols[0]:
-        # Platform distribution pie chart
-        platform_counts = influencers_df['platform'].value_counts().reset_index()
-        platform_counts.columns = ['Platform', 'Count']
-        
-        fig_platform = px.pie(
-            platform_counts, 
-            values='Count', 
-            names='Platform',
-            title='Influencers by Platform',
-            hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Pastel
-        )
-        st.plotly_chart(fig_platform, use_container_width=True)
     
-    with chart_cols[1]:
+    with chart_cols[0]:
         # Post type distribution
         post_counts = influencers_df['post_type'].value_counts().reset_index()
         post_counts.columns = ['Post Type', 'Count']
@@ -166,6 +150,21 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
             color_discrete_sequence=px.colors.qualitative.Pastel
         )
         st.plotly_chart(fig_post, use_container_width=True)
+    
+    with chart_cols[1]:
+        # Views by platform
+        platform_views = influencers_df.groupby('platform')['views'].sum().reset_index()
+        
+        fig_views = px.bar(
+            platform_views,
+            x='platform',
+            y='views',
+            title='Views by Platform',
+            labels={'platform': 'Platform', 'views': 'Views'},
+            color='platform',
+            color_discrete_sequence=px.colors.qualitative.Pastel
+        )
+        st.plotly_chart(fig_views, use_container_width=True)
     
     # Show engagement charts if enabled
     if sharing_settings.get('include_engagement_metrics', True):
@@ -250,28 +249,6 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
             st.plotly_chart(fig_eff, use_container_width=True)
-        
-        # If both cost and engagement metrics are enabled, show cost per engagement
-        if sharing_settings.get('include_engagement_metrics', True):
-            st.subheader("Cost Efficiency Analysis")
-            
-            # Calculate cost per engagement
-            influencers_df['total_engagements'] = influencers_df['likes'] + influencers_df['shares'] + influencers_df['comments']
-            
-            platform_cost_per_engagement = influencers_df.groupby('platform').apply(
-                lambda x: x['cost'].sum() / max(x['total_engagements'].sum(), 1)
-            ).reset_index()
-            platform_cost_per_engagement.columns = ['Platform', 'Cost per Engagement']
-            
-            fig_cpe = px.bar(
-                platform_cost_per_engagement,
-                x='Platform',
-                y='Cost per Engagement',
-                title='Cost per Engagement by Platform (₹)',
-                color='Platform',
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            st.plotly_chart(fig_cpe, use_container_width=True)
 
 # Show influencer details if enabled
 if sharing_settings.get('include_influencer_details', True) and campaign['influencers']:
@@ -280,180 +257,130 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
     # Create display dataframe
     influencers_df = pd.DataFrame(campaign['influencers'])
     
-    # Select columns to display
-    display_columns = ['name', 'platform', 'post_type', 'views']
-    
-    # Add engagement metrics if enabled
-    if sharing_settings.get('include_engagement_metrics', True):
-        display_columns.extend(['likes', 'shares', 'comments'])
-    
-    if sharing_settings.get('include_costs', False):
-        display_columns.append('cost')
-    
-    if 'post_url' in influencers_df.columns:
-        display_columns.append('post_url')
-    
-    # Create a clean display dataframe with only selected columns
-    display_df = influencers_df[display_columns].copy()
-    
-    # Rename columns for display
-    column_map = {
-        'name': 'Name',
-        'platform': 'Platform',
-        'post_type': 'Post Type', 
-        'views': 'Views',
-        'cost': 'Investment (₹)',
-        'post_url': 'Post URL',
-        'likes': 'Likes',
-        'shares': 'Shares',
-        'comments': 'Comments'
-    }
-    
-    display_df.columns = [column_map.get(col, col) for col in display_df.columns]
-    
-    # Format numeric columns
-    if 'Views' in display_df.columns:
-        display_df['Views'] = display_df['Views'].apply(lambda x: f"{x:,}")
-    
-    if 'Investment (₹)' in display_df.columns:
-        display_df['Investment (₹)'] = display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
-    
-    if 'Likes' in display_df.columns:
-        display_df['Likes'] = display_df['Likes'].apply(lambda x: f"{x:,}")
-    
-    if 'Shares' in display_df.columns:
-        display_df['Shares'] = display_df['Shares'].apply(lambda x: f"{x:,}")
-    
-    if 'Comments' in display_df.columns:
-        display_df['Comments'] = display_df['Comments'].apply(lambda x: f"{x:,}")
-    
-    # Calculate totals row
-    totals = {
-        'Name': 'TOTAL',
-        'Platform': '',
-        'Post Type': '',
-        'Views': f"{influencers_df['views'].sum():,}"
-    }
-    
-    if 'Investment (₹)' in display_df.columns:
-        totals['Investment (₹)'] = f"₹{influencers_df['cost'].sum():,.2f}"
-    
-    if 'Likes' in display_df.columns:
-        totals['Likes'] = f"{influencers_df['likes'].sum():,}"
-    
-    if 'Shares' in display_df.columns:
-        totals['Shares'] = f"{influencers_df['shares'].sum():,}"
-    
-    if 'Comments' in display_df.columns:
-        totals['Comments'] = f"{influencers_df['comments'].sum():,}"
-    
-    # Add totals row
-    display_df = pd.concat([display_df, pd.DataFrame([totals])], ignore_index=True)
-    
-    # Display the dataframe
-    st.dataframe(display_df, use_container_width=True)
-
     # Add filtering capabilities for clients
-    if len(influencers_df) > 5:  # Only show filters if there are enough influencers
-        st.subheader("Filter Influencers")
+    filter_cols = st.columns(3)
+    
+    with filter_cols[0]:
+        filter_platform = st.selectbox(
+            "Filter by Platform",
+            ["All"] + list(influencers_df['platform'].unique())
+        )
+    
+    with filter_cols[1]:
+        filter_post_type = st.selectbox(
+            "Filter by Post Type",
+            ["All"] + list(influencers_df['post_type'].unique())
+        )
+    
+    with filter_cols[2]:
+        sort_options = ["Name", "Views"]
+        if sharing_settings.get('include_engagement_metrics', True):
+            sort_options.extend(["Likes", "Shares", "Comments"])
+        if sharing_settings.get('include_costs', False):
+            sort_options.append("Investment")
         
-        filter_cols = st.columns(3)
+        sort_by = st.selectbox("Sort By", sort_options)
+    
+    # Apply filters and sorting
+    filtered_df = influencers_df.copy()
+    
+    if filter_platform != "All":
+        filtered_df = filtered_df[filtered_df['platform'] == filter_platform]
+    
+    if filter_post_type != "All":
+        filtered_df = filtered_df[filtered_df['post_type'] == filter_post_type]
+    
+    # Apply sorting
+    if sort_by == "Name":
+        filtered_df = filtered_df.sort_values('name')
+    elif sort_by == "Views":
+        filtered_df = filtered_df.sort_values('views', ascending=False)
+    elif sort_by == "Likes":
+        filtered_df = filtered_df.sort_values('likes', ascending=False)
+    elif sort_by == "Shares":
+        filtered_df = filtered_df.sort_values('shares', ascending=False)
+    elif sort_by == "Comments":
+        filtered_df = filtered_df.sort_values('comments', ascending=False)
+    elif sort_by == "Investment":
+        filtered_df = filtered_df.sort_values('cost', ascending=False)
+    
+    # Display filtered results
+    if not filtered_df.empty:
+        # Select columns to display
+        display_columns = ['name', 'platform', 'post_type', 'views']
         
-        with filter_cols[0]:
-            filter_platform = st.selectbox(
-                "Filter by Platform",
-                ["All"] + list(influencers_df['platform'].unique())
-            )
+        # Add engagement metrics if enabled
+        if sharing_settings.get('include_engagement_metrics', True):
+            display_columns.extend(['likes', 'shares', 'comments'])
         
-        with filter_cols[1]:
-            filter_post_type = st.selectbox(
-                "Filter by Post Type",
-                ["All"] + list(influencers_df['post_type'].unique())
-            )
+        if sharing_settings.get('include_costs', False):
+            display_columns.append('cost')
         
-        with filter_cols[2]:
-            sort_options = ["Name", "Views"]
-            if sharing_settings.get('include_engagement_metrics', True):
-                sort_options.extend(["Likes", "Shares", "Comments"])
-            if sharing_settings.get('include_costs', False):
-                sort_options.append("Investment")
-            
-            sort_by = st.selectbox("Sort By", sort_options)
+        if 'post_url' in filtered_df.columns:
+            display_columns.append('post_url')
         
-        # Apply filters and sorting
-        filtered_df = influencers_df.copy()
+        # Create a clean display dataframe with only selected columns
+        filtered_display_df = filtered_df[display_columns].copy()
         
-        if filter_platform != "All":
-            filtered_df = filtered_df[filtered_df['platform'] == filter_platform]
+        # Rename columns for display
+        column_map = {
+            'name': 'Name',
+            'platform': 'Platform',
+            'post_type': 'Post Type', 
+            'views': 'Views',
+            'cost': 'Investment (₹)',
+            'post_url': 'Post URL',
+            'likes': 'Likes',
+            'shares': 'Shares',
+            'comments': 'Comments'
+        }
         
-        if filter_post_type != "All":
-            filtered_df = filtered_df[filtered_df['post_type'] == filter_post_type]
+        filtered_display_df.columns = [column_map.get(col, col) for col in filtered_display_df.columns]
         
-        # Apply sorting
-        if sort_by == "Name":
-            filtered_df = filtered_df.sort_values('name')
-        elif sort_by == "Views":
-            filtered_df = filtered_df.sort_values('views', ascending=False)
-        elif sort_by == "Likes":
-            filtered_df = filtered_df.sort_values('likes', ascending=False)
-        elif sort_by == "Shares":
-            filtered_df = filtered_df.sort_values('shares', ascending=False)
-        elif sort_by == "Comments":
-            filtered_df = filtered_df.sort_values('comments', ascending=False)
-        elif sort_by == "Investment":
-            filtered_df = filtered_df.sort_values('cost', ascending=False)
+        # Format numeric columns
+        if 'Views' in filtered_display_df.columns:
+            filtered_display_df['Views'] = filtered_display_df['Views'].apply(lambda x: f"{x:,}")
         
-        # Display filtered results
-        if not filtered_df.empty:
-            # Create display dataframe with only selected columns
-            filtered_display_df = filtered_df[display_columns].copy()
-            
-            # Rename columns
-            filtered_display_df.columns = [column_map.get(col, col) for col in filtered_display_df.columns]
-            
-            # Format numeric columns
-            if 'Views' in filtered_display_df.columns:
-                filtered_display_df['Views'] = filtered_display_df['Views'].apply(lambda x: f"{x:,}")
-            
-            if 'Investment (₹)' in filtered_display_df.columns:
-                filtered_display_df['Investment (₹)'] = filtered_display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
-            
-            if 'Likes' in filtered_display_df.columns:
-                filtered_display_df['Likes'] = filtered_display_df['Likes'].apply(lambda x: f"{x:,}")
-            
-            if 'Shares' in filtered_display_df.columns:
-                filtered_display_df['Shares'] = filtered_display_df['Shares'].apply(lambda x: f"{x:,}")
-            
-            if 'Comments' in filtered_display_df.columns:
-                filtered_display_df['Comments'] = filtered_display_df['Comments'].apply(lambda x: f"{x:,}")
-            
-            # Calculate filtered totals
-            filtered_totals = {
-                'Name': 'TOTAL',
-                'Platform': '',
-                'Post Type': '',
-                'Views': f"{filtered_df['views'].sum():,}"
-            }
-            
-            if 'Investment (₹)' in filtered_display_df.columns:
-                filtered_totals['Investment (₹)'] = f"₹{filtered_df['cost'].sum():,.2f}"
-            
-            if 'Likes' in filtered_display_df.columns:
-                filtered_totals['Likes'] = f"{filtered_df['likes'].sum():,}"
-            
-            if 'Shares' in filtered_display_df.columns:
-                filtered_totals['Shares'] = f"{filtered_df['shares'].sum():,}"
-            
-            if 'Comments' in filtered_display_df.columns:
-                filtered_totals['Comments'] = f"{filtered_df['comments'].sum():,}"
-            
-            # Add totals row
-            filtered_display_df = pd.concat([filtered_display_df, pd.DataFrame([filtered_totals])], ignore_index=True)
-            
-            st.subheader(f"Filtered Results ({len(filtered_df)} influencers)")
-            st.dataframe(filtered_display_df, use_container_width=True)
-        else:
-            st.info("No influencers match your filter criteria")
+        if 'Investment (₹)' in filtered_display_df.columns:
+            filtered_display_df['Investment (₹)'] = filtered_display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
+        
+        if 'Likes' in filtered_display_df.columns:
+            filtered_display_df['Likes'] = filtered_display_df['Likes'].apply(lambda x: f"{x:,}")
+        
+        if 'Shares' in filtered_display_df.columns:
+            filtered_display_df['Shares'] = filtered_display_df['Shares'].apply(lambda x: f"{x:,}")
+        
+        if 'Comments' in filtered_display_df.columns:
+            filtered_display_df['Comments'] = filtered_display_df['Comments'].apply(lambda x: f"{x:,}")
+        
+        # Calculate filtered totals
+        filtered_totals = {
+            'Name': 'TOTAL',
+            'Platform': '',
+            'Post Type': '',
+            'Views': f"{filtered_df['views'].sum():,}"
+        }
+        
+        if 'Investment (₹)' in filtered_display_df.columns:
+            filtered_totals['Investment (₹)'] = f"₹{filtered_df['cost'].sum():,.2f}"
+        
+        if 'Likes' in filtered_display_df.columns:
+            filtered_totals['Likes'] = f"{filtered_df['likes'].sum():,}"
+        
+        if 'Shares' in filtered_display_df.columns:
+            filtered_totals['Shares'] = f"{filtered_df['shares'].sum():,}"
+        
+        if 'Comments' in filtered_display_df.columns:
+            filtered_totals['Comments'] = f"{filtered_df['comments'].sum():,}"
+        
+        # Add totals row
+        filtered_display_df = pd.concat([filtered_display_df, pd.DataFrame([filtered_totals])], ignore_index=True)
+        
+        # Show record count and display the dataframe
+        st.write(f"Showing {len(filtered_df)} influencers")
+        st.dataframe(filtered_display_df, use_container_width=True)
+    else:
+        st.info("No influencers match your filter criteria")
 
 elif not campaign['influencers']:
     st.info("No influencers added to this campaign yet.")
@@ -474,7 +401,7 @@ st.write("If you have any questions about this report, please contact your campa
 # Custom footer that replaces Streamlit's default footer
 st.markdown("""
 <div style="background-color: #F3F4F6; padding: 1rem; text-align: center; border-radius: 8px; margin-top: 2rem;">
-    <p style="margin: 0; color: #6B7280; font-size: 0.9rem;">Campaign Report | Powered by Campaign Manager</p>
+    <p style="margin: 0; color: #6B7280; font-size: 0.9rem;">Campaign Report | Powered by ltcomedia</p>
 </div>
 """, unsafe_allow_html=True)
 
