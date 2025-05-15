@@ -582,14 +582,14 @@ st.subheader("Download Options")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.write("### PDF Report")
-    st.write("Download a text-based PDF report of the campaign data.")
+    st.write("### PDF Report with Charts")
+    st.write("Download a PDF report with tables and charts.")
     
     if st.button("Generate PDF Report"):
         try:
             with st.spinner("Generating PDF report..."):
-                # Generate PDF
-                pdf_data = create_text_pdf(campaign, sharing_settings, filtered_df)
+                # Generate PDF with charts
+                pdf_data = create_enhanced_pdf(campaign, sharing_settings, filtered_df)
                 
                 # Create download link
                 b64_pdf = base64.b64encode(pdf_data).decode()
@@ -618,9 +618,9 @@ with col1:
                 """, unsafe_allow_html=True)
                 
                 st.markdown(href, unsafe_allow_html=True)
-                st.success("PDF generated successfully!")
+                st.success("PDF with charts generated successfully!")
         except Exception as e:
-            st.error(f"Error generating PDF: {str(e)}")
+            st.error(f"Error generating PDF with charts: {str(e)}")
             st.info("Try using the CSV export option instead.")
 
 with col2:
