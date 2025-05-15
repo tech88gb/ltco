@@ -413,12 +413,9 @@ st.download_button(
 st.subheader("Contact Information")
 st.write("If you have any questions about this report, please contact your campaign manager.")
 
-# Custom footer that replaces Streamlit's default footer
-st.markdown("""
-<div style="background-color: #F3F4F6; padding: 1rem; text-align: center; border-radius: 8px; margin-top: 2rem;">
-    <p style="margin: 0; color: #6B7280; font-size: 0.9rem;">Campaign Report | Powered by Campaign Manager</p>
-</div>
-""", unsafe_allow_html=True)
+# Footer
+st.markdown("---")
+st.markdown("Campaign Manager v1.0 | Client view")
 
 # Add a hidden back button that we'll control with CSS
 # This is just for better UX in case someone needs to go back
