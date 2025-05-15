@@ -1,7 +1,10 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from datetime import datetime
+import io
+import base64
 from db import get_campaign_by_share_token
 
 # Set page configuration - MUST BE THE FIRST STREAMLIT COMMAND
@@ -50,8 +53,50 @@ st.markdown("""
     .stSidebar {
         pointer-events: none;
     }
+    
+    /* Style the download button to match Streamlit buttons */
+    .download-button {
+        display: inline-block;
+        padding: 0.25em 0.75em;
+        background-color: #0e1117;
+        color: #fafafa;
+        text-align: center;
+        text-decoration: none;
+        font-weight: 400;
+        font-size: 0.875rem;
+        border-radius: 0.25rem;
+        border: 1px solid #3b3e46;
+        cursor: pointer;
+        line-height: 1.6;
+        user-select: none;
+        transition: color 150ms ease 0s, border-color 150ms ease 0s, background-color 150ms ease 0s;
+    }
+    .download-button:hover {
+        border-color: rgb(128, 132, 149);
+        color: rgb(255, 255, 255);
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# Helper function for CSV export
+def get_csv_download_link(campaign, filtered_df=None):
+    """Generate a CSV and return a download link"""
+    # Use filtered data if available, otherwise use all influencers
+    if filtered_df is not None and not filtered_df.empty:
+        df = filtered_df.copy()
+    else:
+        df = pd.DataFrame(campaign['influencers'])
+    
+    # Convert to CSV
+    csv = df.to_csv(index=False)
+    
+    # Create base64 encoded string
+    b64_csv = base64.b64encode(csv.encode()).decode()
+    
+    # Create download link
+    href = f'<a style="text-decoration: none;" href="data:text/csv;base64,{b64_csv}" download="{campaign["name"]}_influencers.csv" class="download-button">Download Data</a>'
+    
+    return href
 
 # Get the share token from the query params using the non-experimental API
 token = st.query_params.get("token", None)
@@ -101,6 +146,9 @@ st.write(f"**Date:** {datetime.now().strftime('%B %d, %Y')}")
 
 if sharing_settings.get('custom_message'):
     st.info(sharing_settings['custom_message'])
+
+# Store filtered_df for export
+filtered_df = None
 
 # Show metrics if enabled
 if sharing_settings.get('include_metrics', True):
@@ -294,7 +342,7 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         #if sharing_settings.get('include_costs', False):
          #   display_columns.append('cost')
         
-        if 'post_url' in filtered_df.columns and 'post_url' in filtered_df.columns[0]:
+        if 'post_url' in filtered_df.columns and any(not pd.isna(url) for url in filtered_df['post_url']):
             display_columns.append('post_url')
         
         # Create a clean display dataframe with only selected columns
@@ -363,14 +411,20 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
 elif not campaign['influencers']:
     st.info("No influencers added to this campaign yet.")
 
-# Add optional PDF download button
-st.download_button(
-    label="Download PDF Report",
-    data="This would be a PDF report in a real implementation",
-    file_name=f"{campaign['name']}_report.pdf",
-    mime="application/pdf",
-    disabled=True
-)
+# Add direct CSV Download button
+if campaign['influencers']:
+    st.subheader("Export Data")
+    
+    # Create columns for layout
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        st.write("Download the current data to use in Excel or other spreadsheet applications.")
+    
+    with col2:
+        # Generate the download link directly
+        download_link = get_csv_download_link(campaign, filtered_df)
+        st.markdown(download_link, unsafe_allow_html=True)
 
 # Add contact information section
 st.subheader("Contact Information")
