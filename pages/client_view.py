@@ -59,7 +59,7 @@ st.markdown("""
         display: inline-block;
         padding: 0.25em 0.75em;
         background-color: #0e1117;
-        color: #ffffff;
+        color: #fafafa;
         text-align: center;
         text-decoration: none;
         font-weight: 400;
@@ -73,7 +73,7 @@ st.markdown("""
     }
     .download-button:hover {
         border-color: rgb(128, 132, 149);
-        color: rgb(38, 39, 48);
+        color: rgb(255, 255, 255);
     }
 </style>
 """, unsafe_allow_html=True)
