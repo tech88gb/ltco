@@ -6,11 +6,10 @@ from datetime import datetime
 import io
 import base64
 from reportlab.lib.pagesizes import letter, A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
-from PIL import Image as PILImage
 from db import get_campaign_by_share_token
 
 # Set page configuration - MUST BE THE FIRST STREAMLIT COMMAND
@@ -62,22 +61,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Helper functions for PDF generation
-def get_image_from_plotly(fig):
-    """Convert a plotly figure to an in-memory PNG image that can be used in ReportLab"""
-    # Get the image as bytes
-    img_bytes = fig.to_image(format="png", scale=2)
-    
-    # Create BytesIO object
-    img_buffer = io.BytesIO(img_bytes)
-    
-    # Open with PIL
-    img = PILImage.open(img_buffer)
-    
-    return img
-
-def create_pdf_report(campaign, sharing_settings, filtered_df=None):
-    """Create a PDF report of the campaign"""
+# Helper function for PDF generation - simplified version without images
+def create_simple_pdf_report(campaign, sharing_settings, filtered_df=None):
+    """Create a simple text-based PDF report of the campaign without images"""
     buffer = io.BytesIO()
     
     # Create the PDF document
@@ -96,14 +82,6 @@ def create_pdf_report(campaign, sharing_settings, filtered_df=None):
     heading_style = styles["Heading1"]
     subheading_style = styles["Heading2"]
     normal_style = styles["Normal"]
-    
-    # Custom styles
-    metric_style = ParagraphStyle(
-        'MetricStyle',
-        parent=styles['Normal'],
-        fontSize=14,
-        spaceAfter=12
-    )
     
     # Content elements
     elements = []
@@ -162,74 +140,289 @@ def create_pdf_report(campaign, sharing_settings, filtered_df=None):
         elements.append(metrics_table)
         elements.append(Spacer(1, 0.5*inch))
     
-    # Add charts if enabled and influencers exist
+    # Add summary information about the charts
     if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
-        elements.append(Paragraph("Performance Charts", heading_style))
+        elements.append(Paragraph("Performance Summary", heading_style))
         
         # Create dataframe from influencers
         influencers_df = pd.DataFrame(campaign['influencers'])
         
-        # Create and add charts as images
-        try:
-            # Platform distribution pie chart
-            platform_counts = influencers_df['platform'].value_counts().reset_index()
-            platform_counts.columns = ['Platform', 'Count']
+        # Platform distribution summary
+        elements.append(Paragraph("Platform Distribution", subheading_style))
+        platform_counts = influencers_df['platform'].value_counts().reset_index()
+        platform_counts.columns = ['Platform', 'Count']
+        
+        # Create a table for platform distribution
+        platform_data = [["Platform", "Count"]]
+        for _, row in platform_counts.iterrows():
+            platform_data.append([row['Platform'], str(row['Count'])])
+        
+        platform_table = Table(platform_data, colWidths=[2*inch, 1*inch])
+        platform_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (1, 0), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (1, 0), colors.black),
+            ('ALIGN', (0, 0), (1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+        ]))
+        
+        elements.append(platform_table)
+        elements.append(Spacer(1, 0.25*inch))
+        
+        # Post type distribution summary
+        elements.append(Paragraph("Post Type Distribution", subheading_style))
+        post_counts = influencers_df['post_type'].value_counts().reset_index()
+        post_counts.columns = ['Post Type', 'Count']
+        
+        # Create a table for post type distribution
+        post_data = [["Post Type", "Count"]]
+        for _, row in post_counts.iterrows():
+            post_data.append([row['Post Type'], str(row['Count'])])
+        
+        post_table = Table(post_data, colWidths=[2*inch, 1*inch])
+        post_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (1, 0), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (1, 0), colors.black),
+            ('ALIGN', (0, 0), (1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+        ]))
+        
+        elements.append(post_table)
+        elements.append(Spacer(1, 0.25*inch))
+        
+        # Views by platform summary
+        elements.append(Paragraph("Views by Platform", subheading_style))
+        platform_views = influencers_df.groupby('platform')['views'].sum().reset_index()
+        
+        # Create a table for views by platform
+        views_data = [["Platform", "Views"]]
+        for _, row in platform_views.iterrows():
+            views_data.append([row['platform'], f"{row['views']:,}"])
+        
+        views_table = Table(views_data, colWidths=[2*inch, 2*inch])
+        views_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (1, 0), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (1, 0), colors.black),
+            ('ALIGN', (0, 0), (1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+        ]))
+        
+        elements.append(views_table)
+        elements.append(Spacer(1, 0.25*inch))
+        
+        # Add engagement summaries if enabled
+        if sharing_settings.get('include_engagement_metrics', True):
+            elements.append(Paragraph("Engagement by Platform", subheading_style))
+            platform_engagement = influencers_df.groupby('platform').agg({
+                'likes': 'sum',
+                'shares': 'sum',
+                'comments': 'sum'
+            }).reset_index()
             
-            fig_platform = px.pie(
-                platform_counts, 
-                values='Count', 
-                names='Platform',
-                title='Influencers by Platform',
-                hole=0.4,
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            fig_platform.update_layout(width=500, height=400)
+            # Create a table for engagement by platform
+            engagement_data = [["Platform", "Likes", "Shares", "Comments"]]
+            for _, row in platform_engagement.iterrows():
+                engagement_data.append([
+                    row['platform'], 
+                    f"{row['likes']:,}", 
+                    f"{row['shares']:,}", 
+                    f"{row['comments']:,}"
+                ])
             
-            # Convert chart to PIL Image
-            platform_img = get_image_from_plotly(fig_platform)
+            engagement_table = Table(engagement_data, colWidths=[1.5*inch, 1.25*inch, 1.25*inch, 1.25*inch])
+            engagement_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (3, 0), colors.lightgrey),
+                ('TEXTCOLOR', (0, 0), (3, 0), colors.black),
+                ('ALIGN', (0, 0), (3, 0), 'CENTER'),
+                ('FONTNAME', (0, 0), (3, 0), 'Helvetica-Bold'),
+                ('BOTTOMPADDING', (0, 0), (3, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('ALIGN', (1, 1), (3, -1), 'RIGHT'),
+            ]))
             
-            # Create ReportLab Image object
-            img_width = 4 * inch
-            img_height = (platform_img.height / platform_img.width) * img_width
-            platform_img_obj = Image(platform_img, width=img_width, height=img_height)
-            
-            elements.append(platform_img_obj)
+            elements.append(engagement_table)
             elements.append(Spacer(1, 0.25*inch))
+        
+        # Add cost information if enabled
+        if sharing_settings.get('include_costs', False):
+            elements.append(Paragraph("Investment by Platform", subheading_style))
+            platform_costs = influencers_df.groupby('platform')['cost'].sum().reset_index()
             
-            # Post type bar chart
-            post_counts = influencers_df['post_type'].value_counts().reset_index()
-            post_counts.columns = ['Post Type', 'Count']
+            # Create a table for costs by platform
+            costs_data = [["Platform", "Investment (₹)"]]
+            for _, row in platform_costs.iterrows():
+                costs_data.append([row['platform'], f"₹{row['cost']:,.2f}"])
             
-            fig_post = px.bar(
-                post_counts,
-                x='Post Type',
-                y='Count',
-                title='Content by Post Type',
-                color='Post Type',
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            fig_post.update_layout(width=500, height=400)
+            costs_table = Table(costs_data, colWidths=[2*inch, 2*inch])
+            costs_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (1, 0), colors.lightgrey),
+                ('TEXTCOLOR', (0, 0), (1, 0), colors.black),
+                ('ALIGN', (0, 0), (1, 0), 'CENTER'),
+                ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+                ('BOTTOMPADDING', (0, 0), (1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+            ]))
             
-            # Convert to PIL Image
-            post_img = get_image_from_plotly(fig_post)
-            
-            # Create ReportLab Image object
-            img_width = 4 * inch
-            img_height = (post_img.height / post_img.width) * img_width
-            post_img_obj = Image(post_img, width=img_width, height=img_height)
-            
-            elements.append(post_img_obj)
+            elements.append(costs_table)
             elements.append(Spacer(1, 0.25*inch))
+    
+    # Add influencer details if enabled
+    if sharing_settings.get('include_influencer_details', True) and campaign['influencers']:
+        elements.append(Paragraph("Campaign Influencers", heading_style))
+        
+        # Get influencer data
+        if filtered_df is not None and not filtered_df.empty:
+            influencers_df = filtered_df
+        else:
+            influencers_df = pd.DataFrame(campaign['influencers'])
+        
+        # Select columns to display
+        display_columns = ['name', 'platform', 'post_type', 'views']
+        
+        # Add engagement metrics if enabled
+        if sharing_settings.get('include_engagement_metrics', True):
+            for col in ['likes', 'shares', 'comments']:
+                if col in influencers_df.columns:
+                    display_columns.append(col)
+        
+        if sharing_settings.get('include_costs', False):
+            if 'cost' in influencers_df.columns:
+                display_columns.append('cost')
+        
+        # Create a clean display dataframe with only selected columns
+        # Make sure all selected columns exist in the dataframe
+        available_columns = [col for col in display_columns if col in influencers_df.columns]
+        display_df = influencers_df[available_columns].copy()
+        
+        # Rename columns for display
+        column_map = {
+            'name': 'Name',
+            'platform': 'Platform',
+            'post_type': 'Post Type',
+            'views': 'Views',
+            'cost': 'Investment (₹)',
+            'likes': 'Likes',
+            'shares': 'Shares',
+            'comments': 'Comments'
+        }
+        
+        # Rename only the columns that exist
+        display_df.columns = [column_map.get(col, col) for col in display_df.columns]
+        
+        # Format numeric columns
+        for col in display_df.columns:
+            if col == 'Views' and 'Views' in display_df.columns:
+                display_df['Views'] = display_df['Views'].apply(lambda x: f"{x:,}" if pd.notnull(x) else "")
             
-            # Add more charts based on settings
-            if sharing_settings.get('include_engagement_metrics', True):
-                elements.append(Paragraph("Engagement Analytics", subheading_style))
-                
-                # Platform engagement chart
-                platform_engagement = influencers_df.groupby('platform').agg({
-                    'likes': 'sum',
-                    'shares': 'sum',
-                    'comments': 'sum'
+            if col == 'Investment (₹)' and 'Investment (₹)' in display_df.columns:
+                display_df['Investment (₹)'] = display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}" if pd.notnull(x) else "")
+            
+            if col == 'Likes' and 'Likes' in display_df.columns:
+                display_df['Likes'] = display_df['Likes'].apply(lambda x: f"{x:,}" if pd.notnull(x) else "")
+            
+            if col == 'Shares' and 'Shares' in display_df.columns:
+                display_df['Shares'] = display_df['Shares'].apply(lambda x: f"{x:,}" if pd.notnull(x) else "")
+            
+            if col == 'Comments' and 'Comments' in display_df.columns:
+                display_df['Comments'] = display_df['Comments'].apply(lambda x: f"{x:,}" if pd.notnull(x) else "")
+        
+        # Calculate totals row
+        totals = {}
+        for col in display_df.columns:
+            if col == 'Name':
+                totals[col] = 'TOTAL'
+            elif col in ['Platform', 'Post Type']:
+                totals[col] = ''
+            elif col == 'Views':
+                totals[col] = f"{influencers_df['views'].sum():,}"
+            elif col == 'Investment (₹)':
+                totals[col] = f"₹{influencers_df['cost'].sum():,.2f}"
+            elif col == 'Likes':
+                totals[col] = f"{influencers_df['likes'].sum():,}"
+            elif col == 'Shares':
+                totals[col] = f"{influencers_df['shares'].sum():,}"
+            elif col == 'Comments':
+                totals[col] = f"{influencers_df['comments'].sum():,}"
+        
+        # Add totals row to the end
+        display_df = pd.concat([display_df, pd.DataFrame([totals])], ignore_index=True)
+        
+        # Prepare data for table
+        table_data = [display_df.columns.tolist()]
+        for _, row in display_df.iterrows():
+            table_data.append(row.tolist())
+        
+        # Determine column widths based on number of columns
+        num_cols = len(display_df.columns)
+        col_width = 5.5 / num_cols
+        col_widths = [col_width * inch] * num_cols
+        
+        # Create the table
+        influencer_table = Table(table_data, colWidths=col_widths)
+        
+        # Define table style
+        table_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),  # Smaller font for table data
+        ])
+        
+        # Right-align numeric columns
+        numeric_cols = ['Views', 'Investment (₹)', 'Likes', 'Shares', 'Comments']
+        for col_name in numeric_cols:
+            if col_name in display_df.columns:
+                col_idx = display_df.columns.tolist().index(col_name)
+                for row_idx in range(1, len(table_data)):
+                    table_style.add('ALIGN', (col_idx, row_idx), (col_idx, row_idx), 'RIGHT')
+        
+        influencer_table.setStyle(table_style)
+        
+        # Add table to PDF
+        elements.append(influencer_table)
+    
+    # Add footer
+    elements.append(Spacer(1, 1*inch))
+    elements.append(Paragraph("Campaign Manager v1.0 | Generated Report", normal_style))
+    
+    # Build the PDF
+    doc.build(elements)
+    
+    # Get the PDF data
+    pdf_data = buffer.getvalue()
+    buffer.close()
+    
+    return pdf_data
+
+def get_csv_export(campaign, filtered_df=None):
+    """Generate a CSV export of the campaign data"""
+    # Use filtered data if available, otherwise use all influencers
+    if filtered_df is not None and not filtered_df.empty:
+        df = filtered_df.copy()
+    else:
+        df = pd.DataFrame(campaign['influencers'])
+    
+    # Convert to CSV
+    csv = df.to_csv(index=False)
+    return csv': 'sum'
                 }).reset_index()
                 
                 # Reshape for plotting
@@ -320,6 +513,85 @@ def create_pdf_report(campaign, sharing_settings, filtered_df=None):
         
         # Create a clean display dataframe with only selected columns
         # Make sure all selected columns exist in the dataframe
+        available_columns = [col for col in display_columns if col in influencers_df.columns]
+        display_df = influencers_df[available_columns].copy()
+        
+        # Rename columns for display
+        column_map = {
+            'name': 'Name',
+            'platform': 'Platform',
+            'post_type': 'Post Type',
+            'views': 'Views',
+            'cost': 'Investment (₹)',
+            'likes': 'Likes',
+            'shares': 'Shares',
+            'comments': 'Comments'
+        }
+        
+        # Rename only the columns that exist
+        display_df.columns = [column_map.get(col, col) for col in display_df.columns]
+        
+        # Format numeric columns
+        for col in display_df.columns:
+            if col == 'Views' and 'Views' in display_df.columns:
+                display_df['Views'] = display_df['Views'].apply(lambda x: f"{x:,}" if pd.notnull(x) else "")
+            
+            if col == 'Investment (₹)' and 'Investment (₹)' in display_df.columns:
+                display_df['Investment (₹)'] = display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}" if pd.notnull(x) else "")
+            
+            if col == 'Likes' and 'Likes' in display_df.columns:
+                display_df['Likes'] = display_df['Likes'].apply(lambda x: f"{x:,}" if pd.notnull(x) else "")
+            
+            if col == 'Shares' and 'Shares' in display_df.columns:
+                display_df['Shares'] = display_df['Shares'].apply(lambda x: f"{x:,}" if pd.notnull(x) else "")
+            
+            if col == 'Comments' and 'Comments' in display_df.columns:
+                display_df['Comments'] = display_df['Comments'].apply(lambda x: f"{x:,}" if pd.notnull(x) else "")
+        
+        # Prepare data for table
+        table_data = [display_df.columns.tolist()]
+        for _, row in display_df.iterrows():
+            table_data.append(row.tolist())
+        
+        # Create the table
+        influencer_table = Table(table_data)
+        
+        # Define table style
+        table_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ])
+        
+        # Right-align numeric columns
+        numeric_cols = ['Views', 'Investment (₹)', 'Likes', 'Shares', 'Comments']
+        for col_name in numeric_cols:
+            if col_name in display_df.columns:
+                col_idx = display_df.columns.tolist().index(col_name)
+                for row_idx in range(1, len(table_data)):
+                    table_style.add('ALIGN', (col_idx, row_idx), (col_idx, row_idx), 'RIGHT')
+        
+        influencer_table.setStyle(table_style)
+        
+        # Add table to PDF
+        elements.append(influencer_table)
+    
+    # Add footer
+    elements.append(Spacer(1, 1*inch))
+    elements.append(Paragraph("Campaign Manager v1.0 | Generated Report", normal_style))
+    
+    # Build the PDF
+    doc.build(elements)
+    
+    # Get the PDF data
+    pdf_data = buffer.getvalue()
+    buffer.close()
+    
+    return pdf_data sure all selected columns exist in the dataframe
         available_columns = [col for col in display_columns if col in influencers_df.columns]
         display_df = influencers_df[available_columns].copy()
         
@@ -755,6 +1027,149 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
 elif not campaign['influencers']:
     st.info("No influencers added to this campaign yet.")
 
+# Add Download Report and Export options
+st.subheader("Download Options")
+
+# Create columns for download options
+download_col1, download_col2 = st.columns(2)
+
+with download_col1:
+    st.write("### PDF Report")
+    st.write("Download a text-based PDF report with all campaign data.")
+    
+    # PDF Download button
+    if st.button("Generate PDF Report"):
+        with st.spinner("Generating PDF report..."):
+            try:
+                # Generate PDF with current filtered data
+                pdf_data = create_simple_pdf_report(campaign, sharing_settings, filtered_df)
+                
+                # Create download link
+                pdf_filename = f"{campaign['name']}_report"
+                
+                # Use base64 encoding for the PDF and display download link
+                b64_pdf = base64.b64encode(pdf_data).decode()
+                href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="{pdf_filename}.pdf" class="download-button">Download PDF Report</a>'
+                
+                # Add CSS to style the download button
+                st.markdown("""
+                <style>
+                    .download-button {
+                        display: inline-block;
+                        padding: 0.5em 1em;
+                        background-color: #4CAF50;
+                        color: white;
+                        text-align: center;
+                        text-decoration: none;
+                        font-size: 16px;
+                        border-radius: 4px;
+                        border: none;
+                        cursor: pointer;
+                        margin-top: 10px;
+                    }
+                    .download-button:hover {
+                        background-color: #45a049;
+                    }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                st.markdown(href, unsafe_allow_html=True)
+                st.success("PDF generated successfully!")
+            except Exception as e:
+                st.error(f"Error generating PDF: {str(e)}")
+                # Show more details for debugging
+                st.error("Error details: " + str(type(e).__name__) + " - " + str(e))
+                st.info("Try refreshing the page and generating the PDF again.")
+
+with download_col2:
+    st.write("### CSV Export")
+    st.write("Export influencer data to CSV format for use in spreadsheet applications.")
+    
+    # CSV Export button
+    if st.button("Export to CSV"):
+        # Generate CSV with current filtered data
+        csv_data = get_csv_export(campaign, filtered_df)
+        
+        # Create download link for CSV
+        b64_csv = base64.b64encode(csv_data.encode()).decode()
+        href = f'<a href="data:text/csv;base64,{b64_csv}" download="{campaign["name"]}_influencers.csv" class="download-button">Download CSV Data</a>'
+        
+        # Add CSS to style the download button
+        st.markdown("""
+        <style>
+            .download-button {
+                display: inline-block;
+                padding: 0.5em 1em;
+                background-color: #4CAF50;
+                color: white;
+                text-align: center;
+                text-decoration: none;
+                font-size: 16px;
+                border-radius: 4px;
+                border: none;
+                cursor: pointer;
+                margin-top: 10px;
+            }
+            .download-button:hover {
+                background-color: #45a049;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown(href, unsafe_allow_html=True)
+        st.success("CSV generated successfully!")
+
+# Add contact information section
+st.subheader("Contact Information")
+st.write("If you have any questions about this report, please contact your campaign manager.")
+
+# Footer
+st.markdown("---")
+st.markdown("Campaign Manager v1.0 | Client view")
+
+# Add a hidden back button that we'll control with CSS
+# This is just for better UX in case someone needs to go back
+st.markdown("""
+<div style="position: fixed; top: 10px; right: 10px;">
+    <a href="javascript:history.back()" style="text-decoration: none; color: #666; background-color: #f5f5f5; 
+       padding: 5px 10px; border-radius: 4px; font-size: 14px;">
+        Back to Campaign Manager
+    </a>
+</div>
+""", unsafe_allow_html=True)}")
+        
+        # Calculate filtered totals
+        filtered_totals = {
+            'Name': 'TOTAL',
+            'Platform': '',
+            'Post Type': '',
+            'Views': f"{filtered_df['views'].sum():,}"
+        }
+        
+        if 'Investment (₹)' in filtered_display_df.columns:
+            filtered_totals['Investment (₹)'] = f"₹{filtered_df['cost'].sum():,.2f}"
+        
+        if 'Likes' in filtered_display_df.columns:
+            filtered_totals['Likes'] = f"{filtered_df['likes'].sum():,}"
+        
+        if 'Shares' in filtered_display_df.columns:
+            filtered_totals['Shares'] = f"{filtered_df['shares'].sum():,}"
+        
+        if 'Comments' in filtered_display_df.columns:
+            filtered_totals['Comments'] = f"{filtered_df['comments'].sum():,}"
+        
+        # Add totals row
+        filtered_display_df = pd.concat([filtered_display_df, pd.DataFrame([filtered_totals])], ignore_index=True)
+        
+        # Show record count and display the dataframe
+        st.write(f"Showing {len(filtered_df)} influencers")
+        st.dataframe(filtered_display_df, use_container_width=True)
+    else:
+        st.info("No influencers match your filter criteria")
+
+elif not campaign['influencers']:
+    st.info("No influencers added to this campaign yet.")
+
 # Add PDF download section
 st.subheader("Download Report")
 
@@ -808,6 +1223,199 @@ with download_col2:
                 st.error(f"Error generating PDF: {str(e)}")
                 # Show more details for debugging
                 st.error("Error details: " + str(type(e).__name__) + " - " + str(e))
+                st.info("Try refreshing the page and generating the PDF again.")
+
+# Add contact information section
+st.subheader("Contact Information")
+st.write("If you have any questions about this report, please contact your campaign manager.")
+
+# Footer
+st.markdown("---")
+st.markdown("Campaign Manager v1.0 | Client view")
+
+# Add a hidden back button that we'll control with CSS
+# This is just for better UX in case someone needs to go back
+st.markdown("""
+<div style="position: fixed; top: 10px; right: 10px;">
+    <a href="javascript:history.back()" style="text-decoration: none; color: #666; background-color: #f5f5f5; 
+       padding: 5px 10px; border-radius: 4px; font-size: 14px;">
+        Back to Campaign Manager
+    </a>
+</div>
+""", unsafe_allow_html=True)
+
+# Add PDF download section
+st.subheader("Download Report")
+
+# Create columns for the download section
+download_col1, download_col2 = st.columns([3, 1])
+
+with download_col1:
+    st.write("Download a PDF report with all the campaign data shown above.")
+    st.write("The report will include all charts and tables based on your current filter selections.")
+
+with download_col2:
+    # Generate the PDF data
+    if st.button("Generate PDF Report"):
+        with st.spinner("Generating PDF report..."):
+            try:
+                # Generate PDF with current filtered data
+                pdf_data = create_pdf_report(campaign, sharing_settings, filtered_df)
+                
+                # Create download link
+                pdf_filename = f"{campaign['name']}_report"
+                
+                # Use base64 encoding for the PDF and display download link
+                b64_pdf = base64.b64encode(pdf_data).decode()
+                href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="{pdf_filename}.pdf" class="download-button">Download PDF Report</a>'
+                
+                # Add CSS to style the download button
+                st.markdown("""
+                <style>
+                    .download-button {
+                        display: inline-block;
+                        padding: 0.5em 1em;
+                        background-color: #4CAF50;
+                        color: white;
+                        text-align: center;
+                        text-decoration: none;
+                        font-size: 16px;
+                        border-radius: 4px;
+                        border: none;
+                        cursor: pointer;
+                        margin-top: 10px;
+                    }
+                    .download-button:hover {
+                        background-color: #45a049;
+                    }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                st.markdown(href, unsafe_allow_html=True)
+                st.success("PDF generated successfully!")
+            except Exception as e:
+                st.error(f"Error generating PDF: {str(e)}")
+                # Show more details for debugging
+                st.error("Error details: " + str(type(e).__name__) + " - " + str(e))
+                st.info("Try refreshing the page and generating the PDF again.")
+
+# Add contact information section
+st.subheader("Contact Information")
+st.write("If you have any questions about this report, please contact your campaign manager.")
+
+# Footer
+st.markdown("---")
+st.markdown("Campaign Manager v1.0 | Client view")
+
+# Add a hidden back button that we'll control with CSS
+# This is just for better UX in case someone needs to go back
+st.markdown("""
+<div style="position: fixed; top: 10px; right: 10px;">
+    <a href="javascript:history.back()" style="text-decoration: none; color: #666; background-color: #f5f5f5; 
+       padding: 5px 10px; border-radius: 4px; font-size: 14px;">
+        Back to Campaign Manager
+    </a>
+</div>
+""", unsafe_allow_html=True)
+        # Format numeric columns
+        if 'Views' in filtered_display_df.columns:
+            filtered_display_df['Views'] = filtered_display_df['Views'].apply(lambda x: f"{x:,}")
+        
+        if 'Investment (₹)' in filtered_display_df.columns:
+            filtered_display_df['Investment (₹)'] = filtered_display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
+        
+        if 'Likes' in filtered_display_df.columns:
+            filtered_display_df['Likes'] = filtered_display_df['Likes'].apply(lambda x: f"{x:,}")
+        
+        if 'Shares' in filtered_display_df.columns:
+            filtered_display_df['Shares'] = filtered_display_df['Shares'].apply(lambda x: f"{x:,}")
+        
+        if 'Comments' in filtered_display_df.columns:
+            filtered_display_df['Comments'] = filtered_display_df['Comments'].apply(lambda x: f"{x:,}")
+        
+        # Calculate filtered totals
+        filtered_totals = {
+            'Name': 'TOTAL',
+            'Platform': '',
+            'Post Type': '',
+            'Views': f"{filtered_df['views'].sum():,}"
+        }
+        
+        if 'Investment (₹)' in filtered_display_df.columns:
+            filtered_totals['Investment (₹)'] = f"₹{filtered_df['cost'].sum():,.2f}"
+        
+        if 'Likes' in filtered_display_df.columns:
+            filtered_totals['Likes'] = f"{filtered_df['likes'].sum():,}"
+        
+        if 'Shares' in filtered_display_df.columns:
+            filtered_totals['Shares'] = f"{filtered_df['shares'].sum():,}"
+        
+        if 'Comments' in filtered_display_df.columns:
+            filtered_totals['Comments'] = f"{filtered_df['comments'].sum():,}"
+        
+        # Add totals row
+        filtered_display_df = pd.concat([filtered_display_df, pd.DataFrame([filtered_totals])], ignore_index=True)
+        
+        # Show record count and display the dataframe
+        st.write(f"Showing {len(filtered_df)} influencers")
+        st.dataframe(filtered_display_df, use_container_width=True)
+    else:
+        st.info("No influencers match your filter criteria")
+
+elif not campaign['influencers']:
+    st.info("No influencers added to this campaign yet.")
+
+# Add PDF download section
+st.subheader("Download Report")
+
+# Create columns for the download section
+download_col1, download_col2 = st.columns([3, 1])
+
+with download_col1:
+    st.write("Download a PDF report with all the campaign data shown above.")
+    st.write("The report will include all charts and tables based on your current filter selections.")
+
+with download_col2:
+    # Generate the PDF data
+    if st.button("Generate PDF Report"):
+        with st.spinner("Generating PDF report..."):
+            try:
+                # Generate PDF with current filtered data
+                pdf_data = create_pdf_report(campaign, sharing_settings, filtered_df)
+                
+                # Create download link
+                pdf_filename = f"{campaign['name']}_report"
+                
+                # Use base64 encoding for the PDF and display download link
+                b64_pdf = base64.b64encode(pdf_data).decode()
+                href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="{pdf_filename}.pdf" class="download-button">Download PDF Report</a>'
+                
+                # Add CSS to style the download button
+                st.markdown("""
+                <style>
+                    .download-button {
+                        display: inline-block;
+                        padding: 0.5em 1em;
+                        background-color: #4CAF50;
+                        color: white;
+                        text-align: center;
+                        text-decoration: none;
+                        font-size: 16px;
+                        border-radius: 4px;
+                        border: none;
+                        cursor: pointer;
+                        margin-top: 10px;
+                    }
+                    .download-button:hover {
+                        background-color: #45a049;
+                    }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                st.markdown(href, unsafe_allow_html=True)
+                st.success("PDF generated successfully!")
+            except Exception as e:
+                st.error(f"Error generating PDF: {str(e)}")
                 st.info("Try refreshing the page and generating the PDF again.")
 
 # Add contact information section
