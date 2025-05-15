@@ -52,9 +52,6 @@ tab1, tab2 = st.tabs(["Sharing Settings", "Preview Client View"])
 with tab1:
     st.header("Configure Sharing Settings")
     
-    # Share token management
-    st.subheader("Share Token")
-    
     # Display current token
     col1, col2 = st.columns([3, 1])
     
