@@ -94,7 +94,7 @@ def get_csv_download_link(campaign, filtered_df=None):
     b64_csv = base64.b64encode(csv.encode()).decode()
     
     # Create download link
-    href = f'<a href="data:text/csv;base64,{b64_csv}" download="{campaign["name"]}_influencers.csv" class="download-button">Download Data</a>'
+    href = f'<a style="text-decoration: none;" href="data:text/csv;base64,{b64_csv}" download="{campaign["name"]}_influencers.csv" class="download-button">Download Data</a>'
     
     return href
 
