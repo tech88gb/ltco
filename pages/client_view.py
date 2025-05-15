@@ -1,7 +1,17 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from datetime import datetime
+import io
+import base64
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+import tempfile
+import os
 from db import get_campaign_by_share_token
 
 # Set page configuration - MUST BE THE FIRST STREAMLIT COMMAND
@@ -53,6 +63,360 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Helper functions for PDF generation
+def export_plotly_to_image(fig):
+    """Convert a plotly figure to a PNG image file that can be used in ReportLab"""
+    img_bytes = fig.to_image(format="png", scale=2)
+    return img_bytes
+
+def create_pdf_report(campaign, sharing_settings, filtered_df=None):
+    """Create a PDF report of the campaign"""
+    buffer = io.BytesIO()
+    
+    # Create the PDF document
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=72,
+        leftMargin=72,
+        topMargin=72,
+        bottomMargin=72
+    )
+    
+    # Define styles
+    styles = getSampleStyleSheet()
+    title_style = styles["Title"]
+    heading_style = styles["Heading1"]
+    subheading_style = styles["Heading2"]
+    normal_style = styles["Normal"]
+    
+    # Custom styles
+    metric_style = ParagraphStyle(
+        'MetricStyle',
+        parent=styles['Normal'],
+        fontSize=14,
+        spaceAfter=12
+    )
+    
+    # Content elements
+    elements = []
+    
+    # Add title
+    elements.append(Paragraph(campaign['name'], title_style))
+    elements.append(Spacer(1, 0.25*inch))
+    
+    # Add date and client name
+    if sharing_settings.get('client_name'):
+        elements.append(Paragraph(f"Prepared for: {sharing_settings['client_name']}", normal_style))
+    
+    elements.append(Paragraph(f"Date: {datetime.now().strftime('%B %d, %Y')}", normal_style))
+    elements.append(Spacer(1, 0.25*inch))
+    
+    # Add custom message if it exists
+    if sharing_settings.get('custom_message'):
+        elements.append(Paragraph(sharing_settings['custom_message'], normal_style))
+        elements.append(Spacer(1, 0.25*inch))
+    
+    # Add metrics if enabled
+    if sharing_settings.get('include_metrics', True):
+        elements.append(Paragraph("Campaign Performance", heading_style))
+        
+        # Create a table for metrics
+        metrics_data = []
+        metrics_headers = ["Metric", "Value"]
+        metrics_data.append(metrics_headers)
+        
+        # Add views
+        metrics_data.append(["Total Views", f"{campaign['metrics']['total_views']:,}"])
+        
+        # Add cost if enabled
+        if sharing_settings.get('include_costs', False):
+            metrics_data.append(["Total Investment", f"₹{campaign['metrics']['total_cost']:,.2f}"])
+        
+        # Add engagement metrics if enabled
+        if sharing_settings.get('include_engagement_metrics', True):
+            metrics_data.append(["Total Likes", f"{campaign['metrics'].get('total_likes', 0):,}"])
+            metrics_data.append(["Total Shares", f"{campaign['metrics'].get('total_shares', 0):,}"])
+            metrics_data.append(["Total Comments", f"{campaign['metrics'].get('total_comments', 0):,}"])
+        
+        # Create the table
+        metrics_table = Table(metrics_data, colWidths=[2*inch, 2*inch])
+        metrics_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (1, 0), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (1, 0), colors.black),
+            ('ALIGN', (0, 0), (1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+        ]))
+        
+        elements.append(metrics_table)
+        elements.append(Spacer(1, 0.5*inch))
+    
+    # Add charts if enabled and influencers exist
+    if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
+        elements.append(Paragraph("Performance Charts", heading_style))
+        
+        # Create dataframe from influencers
+        influencers_df = pd.DataFrame(campaign['influencers'])
+        
+        # Create and add charts as images
+        try:
+            # Platform distribution pie chart
+            platform_counts = influencers_df['platform'].value_counts().reset_index()
+            platform_counts.columns = ['Platform', 'Count']
+            
+            fig_platform = px.pie(
+                platform_counts, 
+                values='Count', 
+                names='Platform',
+                title='Influencers by Platform',
+                hole=0.4,
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig_platform.update_layout(width=500, height=500)
+            
+            # Convert chart to image
+            platform_img = export_plotly_to_image(fig_platform)
+            
+            # Save to temporary file then load with ReportLab
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                temp_file.write(platform_img)
+                temp_file_path = temp_file.name
+            
+            # Add image to PDF
+            platform_img_obj = Image(temp_file_path, width=4*inch, height=4*inch)
+            elements.append(platform_img_obj)
+            elements.append(Spacer(1, 0.25*inch))
+            
+            # Clean up temp file
+            os.unlink(temp_file_path)
+            
+            # Post type bar chart
+            post_counts = influencers_df['post_type'].value_counts().reset_index()
+            post_counts.columns = ['Post Type', 'Count']
+            
+            fig_post = px.bar(
+                post_counts,
+                x='Post Type',
+                y='Count',
+                title='Content by Post Type',
+                color='Post Type',
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig_post.update_layout(width=500, height=500)
+            
+            # Convert to image
+            post_img = export_plotly_to_image(fig_post)
+            
+            # Save to temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                temp_file.write(post_img)
+                temp_file_path = temp_file.name
+            
+            # Add to PDF
+            post_img_obj = Image(temp_file_path, width=4*inch, height=4*inch)
+            elements.append(post_img_obj)
+            elements.append(Spacer(1, 0.25*inch))
+            
+            # Clean up temp file
+            os.unlink(temp_file_path)
+            
+            # Add more charts based on settings
+            if sharing_settings.get('include_engagement_metrics', True):
+                elements.append(Paragraph("Engagement Analytics", subheading_style))
+                
+                # Platform engagement chart
+                platform_engagement = influencers_df.groupby('platform').agg({
+                    'likes': 'sum',
+                    'shares': 'sum',
+                    'comments': 'sum'
+                }).reset_index()
+                
+                # Reshape for plotting
+                platform_engagement_melted = pd.melt(
+                    platform_engagement,
+                    id_vars=['platform'],
+                    value_vars=['likes', 'shares', 'comments'],
+                    var_name='Engagement Type',
+                    value_name='Count'
+                )
+                
+                fig_engagement = px.bar(
+                    platform_engagement_melted,
+                    x='platform',
+                    y='Count',
+                    color='Engagement Type',
+                    title='Engagement by Platform',
+                    barmode='group',
+                    color_discrete_sequence=px.colors.qualitative.Pastel
+                )
+                fig_engagement.update_layout(width=500, height=500)
+                
+                # Convert to image
+                engagement_img = export_plotly_to_image(fig_engagement)
+                
+                # Save to temporary file
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                    temp_file.write(engagement_img)
+                    temp_file_path = temp_file.name
+                
+                # Add to PDF
+                engagement_img_obj = Image(temp_file_path, width=4*inch, height=4*inch)
+                elements.append(engagement_img_obj)
+                elements.append(Spacer(1, 0.25*inch))
+                
+                # Clean up temp file
+                os.unlink(temp_file_path)
+            
+            # Add cost information if enabled
+            if sharing_settings.get('include_costs', False):
+                elements.append(Paragraph("Investment Analysis", subheading_style))
+                
+                # Cost by platform
+                platform_costs = influencers_df.groupby('platform')['cost'].sum().reset_index()
+                platform_costs.columns = ['Platform', 'Cost']
+                
+                fig_costs = px.bar(
+                    platform_costs,
+                    x='Platform',
+                    y='Cost',
+                    title='Investment by Platform',
+                    color='Platform',
+                    color_discrete_sequence=px.colors.qualitative.Pastel
+                )
+                fig_costs.update_layout(width=500, height=500)
+                
+                # Convert to image
+                costs_img = export_plotly_to_image(fig_costs)
+                
+                # Save to temporary file
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                    temp_file.write(costs_img)
+                    temp_file_path = temp_file.name
+                
+                # Add to PDF
+                costs_img_obj = Image(temp_file_path, width=4*inch, height=4*inch)
+                elements.append(costs_img_obj)
+                elements.append(Spacer(1, 0.25*inch))
+                
+                # Clean up temp file
+                os.unlink(temp_file_path)
+        except Exception as e:
+            elements.append(Paragraph(f"Error generating charts: {str(e)}", normal_style))
+    
+    # Add influencer details if enabled
+    if sharing_settings.get('include_influencer_details', True) and campaign['influencers']:
+        elements.append(Paragraph("Campaign Influencers", heading_style))
+        
+        # Get influencer data
+        if filtered_df is not None and not filtered_df.empty:
+            influencers_df = filtered_df
+        else:
+            influencers_df = pd.DataFrame(campaign['influencers'])
+        
+        # Select columns to display
+        display_columns = ['name', 'platform', 'post_type', 'views']
+        
+        # Add engagement metrics if enabled
+        if sharing_settings.get('include_engagement_metrics', True):
+            for col in ['likes', 'shares', 'comments']:
+                if col in influencers_df.columns:
+                    display_columns.append(col)
+        
+        if sharing_settings.get('include_costs', False):
+            if 'cost' in influencers_df.columns:
+                display_columns.append('cost')
+        
+        # Create a clean display dataframe with only selected columns
+        # Make sure all selected columns exist in the dataframe
+        available_columns = [col for col in display_columns if col in influencers_df.columns]
+        display_df = influencers_df[available_columns].copy()
+        
+        # Rename columns for display
+        column_map = {
+            'name': 'Name',
+            'platform': 'Platform',
+            'post_type': 'Post Type',
+            'views': 'Views',
+            'cost': 'Investment (₹)',
+            'likes': 'Likes',
+            'shares': 'Shares',
+            'comments': 'Comments'
+        }
+        
+        # Rename only the columns that exist
+        display_df.columns = [column_map.get(col, col) for col in display_df.columns]
+        
+        # Format numeric columns
+        for col in display_df.columns:
+            if col == 'Views' and 'Views' in display_df.columns:
+                display_df['Views'] = display_df['Views'].apply(lambda x: f"{x:,}" if pd.notnull(x) else "")
+            
+            if col == 'Investment (₹)' and 'Investment (₹)' in display_df.columns:
+                display_df['Investment (₹)'] = display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}" if pd.notnull(x) else "")
+            
+            if col == 'Likes' and 'Likes' in display_df.columns:
+                display_df['Likes'] = display_df['Likes'].apply(lambda x: f"{x:,}" if pd.notnull(x) else "")
+            
+            if col == 'Shares' and 'Shares' in display_df.columns:
+                display_df['Shares'] = display_df['Shares'].apply(lambda x: f"{x:,}" if pd.notnull(x) else "")
+            
+            if col == 'Comments' and 'Comments' in display_df.columns:
+                display_df['Comments'] = display_df['Comments'].apply(lambda x: f"{x:,}" if pd.notnull(x) else "")
+        
+        # Prepare data for table
+        table_data = [display_df.columns.tolist()]
+        for _, row in display_df.iterrows():
+            table_data.append(row.tolist())
+        
+        # Create the table
+        influencer_table = Table(table_data)
+        
+        # Define table style
+        table_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ])
+        
+        # Right-align numeric columns
+        numeric_cols = ['Views', 'Investment (₹)', 'Likes', 'Shares', 'Comments']
+        for col_name in numeric_cols:
+            if col_name in display_df.columns:
+                col_idx = display_df.columns.tolist().index(col_name)
+                for row_idx in range(1, len(table_data)):
+                    table_style.add('ALIGN', (col_idx, row_idx), (col_idx, row_idx), 'RIGHT')
+        
+        influencer_table.setStyle(table_style)
+        
+        # Add table to PDF
+        elements.append(influencer_table)
+    
+    # Add footer
+    elements.append(Spacer(1, 1*inch))
+    elements.append(Paragraph("Campaign Manager v1.0 | Generated Report", normal_style))
+    
+    # Build the PDF
+    doc.build(elements)
+    
+    # Get the PDF data
+    pdf_data = buffer.getvalue()
+    buffer.close()
+    
+    return pdf_data
+
+def get_pdf_download_link(pdf_data, filename):
+    """Generate a download link for the PDF"""
+    b64_pdf = base64.b64encode(pdf_data).decode()
+    return f'<a href="data:application/pdf;base64,{b64_pdf}" download="{filename}.pdf">Click to download PDF report</a>'
+
 # Get the share token from the query params using the non-experimental API
 token = st.query_params.get("token", None)
 
@@ -101,6 +465,9 @@ st.write(f"**Date:** {datetime.now().strftime('%B %d, %Y')}")
 
 if sharing_settings.get('custom_message'):
     st.info(sharing_settings['custom_message'])
+
+# Store filtered_df for PDF generation
+filtered_df = None
 
 # Show metrics if enabled
 if sharing_settings.get('include_metrics', True):
@@ -331,7 +698,7 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         if sharing_settings.get('include_costs', False):
             display_columns.append('cost')
         
-        if 'post_url' in filtered_df.columns and 'post_url' in filtered_df.columns[0]:
+        if 'post_url' in filtered_df.columns and any(not pd.isna(url) for url in filtered_df['post_url']):
             display_columns.append('post_url')
         
         # Create a clean display dataframe with only selected columns
@@ -400,14 +767,58 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
 elif not campaign['influencers']:
     st.info("No influencers added to this campaign yet.")
 
-# Add optional PDF download button
-st.download_button(
-    label="Download PDF Report",
-    data="This would be a PDF report in a real implementation",
-    file_name=f"{campaign['name']}_report.pdf",
-    mime="application/pdf",
-    disabled=True
-)
+# Add PDF download section
+st.subheader("Download Report")
+
+# Create columns for the download section
+download_col1, download_col2 = st.columns([3, 1])
+
+with download_col1:
+    st.write("Download a PDF report with all the campaign data shown above.")
+    st.write("The report will include all charts and tables based on your current filter selections.")
+
+with download_col2:
+    # Generate the PDF data
+    if st.button("Generate PDF Report"):
+        with st.spinner("Generating PDF report..."):
+            try:
+                # Generate PDF with current filtered data
+                pdf_data = create_pdf_report(campaign, sharing_settings, filtered_df)
+                
+                # Create download link
+                pdf_filename = f"{campaign['name']}_report"
+                
+                # Use base64 encoding for the PDF and display download link
+                b64_pdf = base64.b64encode(pdf_data).decode()
+                href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="{pdf_filename}.pdf" class="download-button">Download PDF Report</a>'
+                
+                # Add CSS to style the download button
+                st.markdown("""
+                <style>
+                    .download-button {
+                        display: inline-block;
+                        padding: 0.5em 1em;
+                        background-color: #4CAF50;
+                        color: white;
+                        text-align: center;
+                        text-decoration: none;
+                        font-size: 16px;
+                        border-radius: 4px;
+                        border: none;
+                        cursor: pointer;
+                        margin-top: 10px;
+                    }
+                    .download-button:hover {
+                        background-color: #45a049;
+                    }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                st.markdown(href, unsafe_allow_html=True)
+                st.success("PDF generated successfully!")
+            except Exception as e:
+                st.error(f"Error generating PDF: {str(e)}")
+                st.info("Try refreshing the page and generating the PDF again.")
 
 # Add contact information section
 st.subheader("Contact Information")
