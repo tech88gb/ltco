@@ -92,16 +92,16 @@ with tab1:
             name = st.text_input("Influencer Name", value=st.session_state.im_form_name, key="im_name_input")
             platform = st.selectbox(
                 "Platform", 
-                ["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"],
-                index=["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"].index(st.session_state.im_form_platform) 
-                if st.session_state.im_form_platform in ["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"] else 0,
+                ["Instagram", "Facebook", "YouTube"],
+                index=["Instagram", "Facebook", "YouTube"].index(st.session_state.im_form_platform) 
+                if st.session_state.im_form_platform in ["Instagram", "Facebook", "YouTube"] else 0,
                 key="im_platform_input"
             )
             post_type = st.selectbox(
                 "Post Type", 
-                ["Post", "Story", "Reel", "Video", "Tweet", "Live Stream", "Collaboration", "Other"],
-                index=["Post", "Story", "Reel", "Video", "Tweet", "Live Stream", "Collaboration", "Other"].index(st.session_state.im_form_post_type)
-                if st.session_state.im_form_post_type in ["Post", "Story", "Reel", "Video", "Tweet", "Live Stream", "Collaboration", "Other"] else 0,
+                ["Post", "Reel", "Video"],
+                index=["Post", "Reel", "Video"].index(st.session_state.im_form_post_type)
+                if st.session_state.im_form_post_type in ["Post", "Reel", "Video"] else 0,
                 key="im_post_type_input"
             )
             post_url = st.text_input("Post URL (optional)", value=st.session_state.im_form_post_url, key="im_post_url_input")
@@ -236,14 +236,14 @@ with tab2:
                     new_name = st.text_input("Name", influencer["name"], key=f"name_{influencer['id']}")
                     new_platform = st.selectbox(
                         "Platform", 
-                        ["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"],
-                        index=["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"].index(influencer["platform"]) if influencer["platform"] in ["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"] else 0,
+                        ["Instagram", "Facebook", "YouTube"],
+                        index=["Instagram", "Facebook", "YouTube"].index(influencer["platform"]) if influencer["platform"] in ["Instagram", "Facebook", "YouTube"] else 0,
                         key=f"platform_{influencer['id']}"
                     )
                     new_post_type = st.selectbox(
                         "Post Type", 
-                        ["Post", "Story", "Reel", "Video", "Tweet", "Live Stream", "Collaboration", "Other"],
-                        index=["Post", "Story", "Reel", "Video", "Tweet", "Live Stream", "Collaboration", "Other"].index(influencer["post_type"]) if influencer["post_type"] in ["Post", "Story", "Reel", "Video", "Tweet", "Live Stream", "Collaboration", "Other"] else 0,
+                        ["Post", "Reel", "Video"],
+                        index=["Post", "Reel", "Video"].index(influencer["post_type"]) if influencer["post_type"] in ["Post", "Reel", "Video"] else 0,
                         key=f"post_type_{influencer['id']}"
                     )
                     new_post_url = st.text_input("Post URL", influencer.get("post_url", ""), key=f"post_url_{influencer['id']}")
