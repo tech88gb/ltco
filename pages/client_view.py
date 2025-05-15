@@ -57,19 +57,20 @@ st.markdown("""
     /* Style the download button */
     .download-button {
         display: inline-block;
-        padding: 0.5em 1em;
-        background-color: #f0f2f6;
-        color: #262730;
+        padding: 0.5em 1.2em;
+        background-color: #262730;
+        color: white;
         text-align: center;
         text-decoration: none;
         font-size: 16px;
-        border-radius: 4px;
-        border: 1px solid #d0d0d0;
+        border-radius: 30px;
+        border: 1px solid #3a3b47;
         cursor: pointer;
+        transition: all 0.3s ease;
     }
     .download-button:hover {
-        background-color: #e6e9ef;
-        border-color: #bfbfbf;
+        background-color: #3a3b47;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -90,7 +91,7 @@ def get_csv_download_link(campaign, filtered_df=None):
     b64_csv = base64.b64encode(csv.encode()).decode()
     
     # Create download link
-    href = f'<a href="data:text/csv;base64,{b64_csv}" download="{campaign["name"]}_influencers.csv" class="download-button">Download Data as CSV</a>'
+    href = f'<a href="data:text/csv;base64,{b64_csv}" download="{campaign["name"]}_influencers.csv" class="download-button">Download Data</a>'
     
     return href
 
