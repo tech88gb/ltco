@@ -290,14 +290,14 @@ else:
                     name = st.text_input("Influencer Name", value=st.session_state.form_name, key="name_input")
                     platform = st.selectbox(
                         "Platform", 
-                        ["Instagram", "TikTok", "YouTube", "Twitter/X", "Other"],
-                        index=["Instagram", "TikTok", "YouTube", "Twitter/X", "Other"].index(st.session_state.form_platform),
+                        ["Instagram", "Facebook", "YouTube"],
+                        index=["Instagram", "Facebook", "YouTube"].index(st.session_state.form_platform),
                         key="platform_input"
                     )
                     post_type = st.selectbox(
                         "Post Type", 
-                        ["Post", "Story", "Reel", "Video", "Tweet", "Other"],
-                        index=["Post", "Story", "Reel", "Video", "Tweet", "Other"].index(st.session_state.form_post_type),
+                        ["Post", "Reel", "Video"],
+                        index=["Post", "Reel", "Video"].index(st.session_state.form_post_type),
                         key="post_type_input"
                     )
                 

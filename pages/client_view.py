@@ -225,43 +225,6 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
             st.plotly_chart(fig_engagement_type, use_container_width=True)
-    
-    # Show cost information if enabled
-    if sharing_settings.get('include_costs', False):
-        cost_cols = st.columns(2)
-        
-        with cost_cols[0]:
-            # Cost by platform
-            platform_costs = influencers_df.groupby('platform')['cost'].sum().reset_index()
-            platform_costs.columns = ['Platform', 'Cost']
-            
-            fig_costs = px.bar(
-                platform_costs,
-                x='Platform',
-                y='Cost',
-                title='Investment by Platform',
-                color='Platform',
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            st.plotly_chart(fig_costs, use_container_width=True)
-        
-        with cost_cols[1]:
-            # Calculate efficiency (views per cost)
-            influencers_df['efficiency'] = influencers_df['views'] / influencers_df['cost'].apply(lambda x: max(x, 1))
-            
-            # Efficiency by platform
-            platform_efficiency = influencers_df.groupby('platform')['efficiency'].mean().reset_index()
-            platform_efficiency.columns = ['Platform', 'Views per ₹']
-            
-            fig_eff = px.bar(
-                platform_efficiency,
-                x='Platform',
-                y='Views per ₹',
-                title='Performance by Platform (Views per ₹)',
-                color='Platform',
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            st.plotly_chart(fig_eff, use_container_width=True)
 
 # Show influencer details if enabled
 if sharing_settings.get('include_influencer_details', True) and campaign['influencers']:
@@ -291,8 +254,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         sort_options = ["Name", "Views"]
         if sharing_settings.get('include_engagement_metrics', True):
             sort_options.extend(["Likes", "Shares", "Comments"])
-        if sharing_settings.get('include_costs', False):
-            sort_options.append("Investment")
+        #if sharing_settings.get('include_costs', False):
+         #   sort_options.append("Investment")
         
         sort_by = st.selectbox("Sort By", sort_options, key="sort_by_filter")
     
@@ -316,8 +279,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         filtered_df = filtered_df.sort_values('shares', ascending=False)
     elif sort_by == "Comments":
         filtered_df = filtered_df.sort_values('comments', ascending=False)
-    elif sort_by == "Investment":
-        filtered_df = filtered_df.sort_values('cost', ascending=False)
+    #elif sort_by == "Investment":
+     #   filtered_df = filtered_df.sort_values('cost', ascending=False)
     
     # Display filtered results
     if not filtered_df.empty:
@@ -328,8 +291,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         if sharing_settings.get('include_engagement_metrics', True):
             display_columns.extend(['likes', 'shares', 'comments'])
         
-        if sharing_settings.get('include_costs', False):
-            display_columns.append('cost')
+        #if sharing_settings.get('include_costs', False):
+         #   display_columns.append('cost')
         
         if 'post_url' in filtered_df.columns and 'post_url' in filtered_df.columns[0]:
             display_columns.append('post_url')
@@ -343,7 +306,7 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
             'platform': 'Platform',
             'post_type': 'Post Type', 
             'views': 'Views',
-            'cost': 'Investment (₹)',
+            #'cost': 'Investment (₹)',
             'post_url': 'Post URL',
             'likes': 'Likes',
             'shares': 'Shares',
@@ -356,8 +319,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         if 'Views' in filtered_display_df.columns:
             filtered_display_df['Views'] = filtered_display_df['Views'].apply(lambda x: f"{x:,}")
         
-        if 'Investment (₹)' in filtered_display_df.columns:
-            filtered_display_df['Investment (₹)'] = filtered_display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
+        #if 'Investment (₹)' in filtered_display_df.columns:
+         #   filtered_display_df['Investment (₹)'] = filtered_display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
         
         if 'Likes' in filtered_display_df.columns:
             filtered_display_df['Likes'] = filtered_display_df['Likes'].apply(lambda x: f"{x:,}")
@@ -376,8 +339,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
             'Views': f"{filtered_df['views'].sum():,}"
         }
         
-        if 'Investment (₹)' in filtered_display_df.columns:
-            filtered_totals['Investment (₹)'] = f"₹{filtered_df['cost'].sum():,.2f}"
+        #if 'Investment (₹)' in filtered_display_df.columns:
+         #   filtered_totals['Investment (₹)'] = f"₹{filtered_df['cost'].sum():,.2f}"
         
         if 'Likes' in filtered_display_df.columns:
             filtered_totals['Likes'] = f"{filtered_df['likes'].sum():,}"
