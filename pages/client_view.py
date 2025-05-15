@@ -58,17 +58,18 @@ st.markdown("""
     .download-button {
         display: inline-block;
         padding: 0.5em 1em;
-        background-color: #4CAF50;
-        color: white;
+        background-color: #f0f2f6;
+        color: #262730;
         text-align: center;
         text-decoration: none;
         font-size: 16px;
         border-radius: 4px;
-        border: none;
+        border: 1px solid #d0d0d0;
         cursor: pointer;
     }
     .download-button:hover {
-        background-color: #45a049;
+        background-color: #e6e9ef;
+        border-color: #bfbfbf;
     }
 </style>
 """, unsafe_allow_html=True)
