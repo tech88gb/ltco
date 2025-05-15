@@ -54,23 +54,26 @@ st.markdown("""
         pointer-events: none;
     }
     
-    /* Style the download button */
+    /* Style the download button to match Streamlit buttons */
     .download-button {
         display: inline-block;
-        padding: 0.5em 1.2em;
-        background-color: #262730;
-        color: white;
+        padding: 0.25em 0.75em;
+        background-color: rgb(255, 255, 255);
+        color: rgb(38, 39, 48);
         text-align: center;
         text-decoration: none;
-        font-size: 16px;
-        border-radius: 30px;
-        border: 1px solid #3a3b47;
+        font-weight: 400;
+        font-size: 0.875rem;
+        border-radius: 0.25rem;
+        border: 1px solid rgba(49, 51, 63, 0.2);
         cursor: pointer;
-        transition: all 0.3s ease;
+        line-height: 1.6;
+        user-select: none;
+        transition: color 150ms ease 0s, border-color 150ms ease 0s, background-color 150ms ease 0s;
     }
     .download-button:hover {
-        background-color: #3a3b47;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        border-color: rgb(128, 132, 149);
+        color: rgb(38, 39, 48);
     }
 </style>
 """, unsafe_allow_html=True)
