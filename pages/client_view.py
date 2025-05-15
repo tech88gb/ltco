@@ -53,12 +53,29 @@ st.markdown("""
     .stSidebar {
         pointer-events: none;
     }
+    
+    /* Style the download button */
+    .download-button {
+        display: inline-block;
+        padding: 0.5em 1em;
+        background-color: #4CAF50;
+        color: white;
+        text-align: center;
+        text-decoration: none;
+        font-size: 16px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+    }
+    .download-button:hover {
+        background-color: #45a049;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # Helper function for CSV export
-def get_csv_export(campaign, filtered_df=None):
-    """Generate a CSV export of the campaign data"""
+def get_csv_download_link(campaign, filtered_df=None):
+    """Generate a CSV and return a download link"""
     # Use filtered data if available, otherwise use all influencers
     if filtered_df is not None and not filtered_df.empty:
         df = filtered_df.copy()
@@ -67,7 +84,14 @@ def get_csv_export(campaign, filtered_df=None):
     
     # Convert to CSV
     csv = df.to_csv(index=False)
-    return csv
+    
+    # Create base64 encoded string
+    b64_csv = base64.b64encode(csv.encode()).decode()
+    
+    # Create download link
+    href = f'<a href="data:text/csv;base64,{b64_csv}" download="{campaign["name"]}_influencers.csv" class="download-button">Download Data as CSV</a>'
+    
+    return href
 
 # Get the share token from the query params using the non-experimental API
 token = st.query_params.get("token", None)
@@ -419,43 +443,20 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
 elif not campaign['influencers']:
     st.info("No influencers added to this campaign yet.")
 
-# Add CSV Export section
-st.subheader("Export Data")
-st.write("Export the current data to CSV format for use in spreadsheet applications.")
-
-# CSV Export button
-if st.button("Export to CSV"):
-    # Generate CSV with current filtered data
-    csv_data = get_csv_export(campaign, filtered_df)
+# Add direct CSV Download button
+if campaign['influencers']:
+    st.subheader("Export Data")
     
-    # Create download link for CSV
-    b64_csv = base64.b64encode(csv_data.encode()).decode()
-    href = f'<a href="data:text/csv;base64,{b64_csv}" download="{campaign["name"]}_influencers.csv" class="download-button">Download CSV Data</a>'
+    # Create columns for layout
+    col1, col2 = st.columns([3, 1])
     
-    # Add CSS to style the download button
-    st.markdown("""
-    <style>
-        .download-button {
-            display: inline-block;
-            padding: 0.5em 1em;
-            background-color: #4CAF50;
-            color: white;
-            text-align: center;
-            text-decoration: none;
-            font-size: 16px;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .download-button:hover {
-            background-color: #45a049;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+    with col1:
+        st.write("Download the current data to use in Excel or other spreadsheet applications.")
     
-    st.markdown(href, unsafe_allow_html=True)
-    st.success("CSV file generated successfully!")
+    with col2:
+        # Generate the download link directly
+        download_link = get_csv_download_link(campaign, filtered_df)
+        st.markdown(download_link, unsafe_allow_html=True)
 
 # Add contact information section
 st.subheader("Contact Information")
