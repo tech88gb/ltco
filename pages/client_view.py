@@ -58,14 +58,14 @@ st.markdown("""
     .download-button {
         display: inline-block;
         padding: 0.25em 0.75em;
-        background-color: rgb(255, 255, 255);
-        color: rgb(38, 39, 48);
+        background-color: #0e1117;
+        color: #ffffff;
         text-align: center;
         text-decoration: none;
         font-weight: 400;
         font-size: 0.875rem;
         border-radius: 0.25rem;
-        border: 1px solid rgba(49, 51, 63, 0.2);
+        border: 1px solid #3b3e46;
         cursor: pointer;
         line-height: 1.6;
         user-select: none;
