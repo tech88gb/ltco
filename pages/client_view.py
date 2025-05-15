@@ -10,8 +10,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
-import tempfile
-import os
+from PIL import Image as PILImage
 from db import get_campaign_by_share_token
 
 # Set page configuration - MUST BE THE FIRST STREAMLIT COMMAND
@@ -64,10 +63,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Helper functions for PDF generation
-def export_plotly_to_image(fig):
-    """Convert a plotly figure to a PNG image file that can be used in ReportLab"""
+def get_image_from_plotly(fig):
+    """Convert a plotly figure to an in-memory PNG image that can be used in ReportLab"""
+    # Get the image as bytes
     img_bytes = fig.to_image(format="png", scale=2)
-    return img_bytes
+    
+    # Create BytesIO object
+    img_buffer = io.BytesIO(img_bytes)
+    
+    # Open with PIL
+    img = PILImage.open(img_buffer)
+    
+    return img
 
 def create_pdf_report(campaign, sharing_settings, filtered_df=None):
     """Create a PDF report of the campaign"""
@@ -176,23 +183,18 @@ def create_pdf_report(campaign, sharing_settings, filtered_df=None):
                 hole=0.4,
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
-            fig_platform.update_layout(width=500, height=500)
+            fig_platform.update_layout(width=500, height=400)
             
-            # Convert chart to image
-            platform_img = export_plotly_to_image(fig_platform)
+            # Convert chart to PIL Image
+            platform_img = get_image_from_plotly(fig_platform)
             
-            # Save to temporary file then load with ReportLab
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
-                temp_file.write(platform_img)
-                temp_file_path = temp_file.name
+            # Create ReportLab Image object
+            img_width = 4 * inch
+            img_height = (platform_img.height / platform_img.width) * img_width
+            platform_img_obj = Image(platform_img, width=img_width, height=img_height)
             
-            # Add image to PDF
-            platform_img_obj = Image(temp_file_path, width=4*inch, height=4*inch)
             elements.append(platform_img_obj)
             elements.append(Spacer(1, 0.25*inch))
-            
-            # Clean up temp file
-            os.unlink(temp_file_path)
             
             # Post type bar chart
             post_counts = influencers_df['post_type'].value_counts().reset_index()
@@ -206,23 +208,18 @@ def create_pdf_report(campaign, sharing_settings, filtered_df=None):
                 color='Post Type',
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
-            fig_post.update_layout(width=500, height=500)
+            fig_post.update_layout(width=500, height=400)
             
-            # Convert to image
-            post_img = export_plotly_to_image(fig_post)
+            # Convert to PIL Image
+            post_img = get_image_from_plotly(fig_post)
             
-            # Save to temporary file
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
-                temp_file.write(post_img)
-                temp_file_path = temp_file.name
+            # Create ReportLab Image object
+            img_width = 4 * inch
+            img_height = (post_img.height / post_img.width) * img_width
+            post_img_obj = Image(post_img, width=img_width, height=img_height)
             
-            # Add to PDF
-            post_img_obj = Image(temp_file_path, width=4*inch, height=4*inch)
             elements.append(post_img_obj)
             elements.append(Spacer(1, 0.25*inch))
-            
-            # Clean up temp file
-            os.unlink(temp_file_path)
             
             # Add more charts based on settings
             if sharing_settings.get('include_engagement_metrics', True):
@@ -253,23 +250,18 @@ def create_pdf_report(campaign, sharing_settings, filtered_df=None):
                     barmode='group',
                     color_discrete_sequence=px.colors.qualitative.Pastel
                 )
-                fig_engagement.update_layout(width=500, height=500)
+                fig_engagement.update_layout(width=500, height=400)
                 
-                # Convert to image
-                engagement_img = export_plotly_to_image(fig_engagement)
+                # Convert to PIL Image
+                engagement_img = get_image_from_plotly(fig_engagement)
                 
-                # Save to temporary file
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
-                    temp_file.write(engagement_img)
-                    temp_file_path = temp_file.name
+                # Create ReportLab Image object
+                img_width = 4 * inch
+                img_height = (engagement_img.height / engagement_img.width) * img_width
+                engagement_img_obj = Image(engagement_img, width=img_width, height=img_height)
                 
-                # Add to PDF
-                engagement_img_obj = Image(temp_file_path, width=4*inch, height=4*inch)
                 elements.append(engagement_img_obj)
                 elements.append(Spacer(1, 0.25*inch))
-                
-                # Clean up temp file
-                os.unlink(temp_file_path)
             
             # Add cost information if enabled
             if sharing_settings.get('include_costs', False):
@@ -287,23 +279,19 @@ def create_pdf_report(campaign, sharing_settings, filtered_df=None):
                     color='Platform',
                     color_discrete_sequence=px.colors.qualitative.Pastel
                 )
-                fig_costs.update_layout(width=500, height=500)
+                fig_costs.update_layout(width=500, height=400)
                 
-                # Convert to image
-                costs_img = export_plotly_to_image(fig_costs)
+                # Convert to PIL Image
+                costs_img = get_image_from_plotly(fig_costs)
                 
-                # Save to temporary file
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
-                    temp_file.write(costs_img)
-                    temp_file_path = temp_file.name
+                # Create ReportLab Image object
+                img_width = 4 * inch
+                img_height = (costs_img.height / costs_img.width) * img_width
+                costs_img_obj = Image(costs_img, width=img_width, height=img_height)
                 
-                # Add to PDF
-                costs_img_obj = Image(temp_file_path, width=4*inch, height=4*inch)
                 elements.append(costs_img_obj)
                 elements.append(Spacer(1, 0.25*inch))
                 
-                # Clean up temp file
-                os.unlink(temp_file_path)
         except Exception as e:
             elements.append(Paragraph(f"Error generating charts: {str(e)}", normal_style))
     
@@ -818,6 +806,8 @@ with download_col2:
                 st.success("PDF generated successfully!")
             except Exception as e:
                 st.error(f"Error generating PDF: {str(e)}")
+                # Show more details for debugging
+                st.error("Error details: " + str(type(e).__name__) + " - " + str(e))
                 st.info("Try refreshing the page and generating the PDF again.")
 
 # Add contact information section
