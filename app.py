@@ -4,8 +4,8 @@ import plotly.express as px
 import time
 from datetime import datetime
 from db import save_campaign, get_campaigns, delete_campaign, generate_numeric_id, delete_influencer
-
-
+# Import fallback database
+from fallback_db import get_db_fallback
 
 # Set page configuration
 st.set_page_config(
@@ -25,12 +25,22 @@ header {visibility: hidden;}
 """
 st.markdown(hide_streamlit_elements, unsafe_allow_html=True)
 
-
-
 # Initialize session state variables if they don't exist
 if 'campaigns' not in st.session_state:
-    # Load campaigns from database
-    st.session_state.campaigns = get_campaigns()
+    # Try to load campaigns from database
+    try:
+        st.session_state.campaigns = get_campaigns()
+        # If returned None or empty dict due to DB error, use fallback
+        if not st.session_state.campaigns:
+            db_fallback = get_db_fallback()
+            st.session_state.campaigns = db_fallback.get_campaigns()
+            st.warning("Using local demo mode - database connection failed")
+    except Exception as e:
+        st.error(f"Database connection error: {str(e)}")
+        # Use fallback database
+        db_fallback = get_db_fallback()
+        st.session_state.campaigns = db_fallback.get_campaigns()
+        st.warning("Using local demo mode - database connection failed")
 
 if 'current_campaign_id' not in st.session_state:
     st.session_state.current_campaign_id = None
