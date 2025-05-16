@@ -42,8 +42,6 @@ if 'form_platform' not in st.session_state:
     st.session_state.form_platform = "Instagram"
 if 'form_post_type' not in st.session_state:
     st.session_state.form_post_type = "Post"
-if 'form_cost' not in st.session_state:
-    st.session_state.form_cost = 0.0
 if 'form_views' not in st.session_state:
     st.session_state.form_views = 0
 if 'form_likes' not in st.session_state:
@@ -65,7 +63,6 @@ def reset_form_fields():
     st.session_state.form_name = ""
     st.session_state.form_platform = "Instagram"
     st.session_state.form_post_type = "Post"
-    st.session_state.form_cost = 0.0
     st.session_state.form_views = 0
     st.session_state.form_likes = 0
     st.session_state.form_shares = 0
@@ -100,7 +97,6 @@ with st.sidebar:
                 "budget": 0,
                 "metrics": {
                     "total_reach": 0,
-                    "total_cost": 0,
                     "total_views": 0,
                     "total_likes": 0,
                     "total_shares": 0,
@@ -309,7 +305,6 @@ else:
                     
                 
                 with cols[1]:
-                    
                     views = st.number_input("Views", min_value=0, step=1000, value=st.session_state.form_views, key="views_input")
                     post_type = st.selectbox(
                         "Post Type", 
@@ -340,7 +335,6 @@ else:
                         "name": name,
                         "platform": platform,
                         "post_type": post_type,
-                        "cost": float(cost),
                         "views": int(views),
                         "likes": int(likes),
                         "shares": int(shares),
@@ -351,7 +345,6 @@ else:
                     current_campaign["influencers"].append(new_influencer)
                     
                     # Update metrics
-                    current_campaign["metrics"]["total_cost"] += float(cost)
                     current_campaign["metrics"]["total_views"] += int(views)
                     current_campaign["metrics"]["total_likes"] = current_campaign["metrics"].get("total_likes", 0) + int(likes)
                     current_campaign["metrics"]["total_shares"] = current_campaign["metrics"].get("total_shares", 0) + int(shares)
@@ -380,7 +373,6 @@ else:
                     'platform': '',
                     'post_type': '',
                     'views': influencer_df['views'].sum(),
-                    'cost': influencer_df['cost'].sum(),
                     'likes': influencer_df['likes'].sum() if 'likes' in influencer_df.columns else 0,
                     'shares': influencer_df['shares'].sum() if 'shares' in influencer_df.columns else 0,
                     'comments': influencer_df['comments'].sum() if 'comments' in influencer_df.columns else 0
@@ -392,8 +384,8 @@ else:
                 # Add totals row
                 display_df = pd.concat([display_df, pd.DataFrame([totals])], ignore_index=True)
                 
-                # Format the table
-                display_df = display_df[['name', 'platform', 'post_type', 'views', 'cost', 'likes', 'shares', 'comments']]
+                # Format the table - removing cost field
+                display_df = display_df[['name', 'platform', 'post_type', 'views', 'likes', 'shares', 'comments']]
                 
                 st.dataframe(display_df, use_container_width=True)
                 
@@ -409,8 +401,6 @@ else:
                             st.write(f"**Views:** {influencer['views']:,}")
                         
                         with cols[1]:
-                            st.write(f"**Cost:** ₹{influencer['cost']:,.2f}")
-                            
                             # Engagement metrics
                             st.write(f"**Likes:** {influencer.get('likes', 0):,}")
                             st.write(f"**Shares:** {influencer.get('shares', 0):,}")
@@ -423,7 +413,6 @@ else:
                                     delete_influencer(influencer['id'])
                                     
                                     # Update metrics before removing
-                                    current_campaign["metrics"]["total_cost"] -= float(influencer['cost'])
                                     current_campaign["metrics"]["total_views"] -= int(influencer['views'])
                                     current_campaign["metrics"]["total_likes"] = current_campaign["metrics"].get("total_likes", 0) - int(influencer.get('likes', 0))
                                     current_campaign["metrics"]["total_shares"] = current_campaign["metrics"].get("total_shares", 0) - int(influencer.get('shares', 0))
@@ -482,7 +471,6 @@ else:
             st.write("Client view will include:")
             st.checkbox("Campaign Overview", value=True, disabled=True)
             st.checkbox("Performance Metrics", value=True, disabled=True)
-            include_costs = st.checkbox("Cost Information", value=False)
             include_influencer_details = st.checkbox("Detailed Influencer Information", value=True)
             
             if st.button("Update Sharing Settings"):
@@ -491,7 +479,6 @@ else:
                     current_campaign['sharing_settings'] = {}
                 
                 current_campaign["sharing_settings"] = {
-                    "include_costs": include_costs,
                     "include_influencer_details": include_influencer_details
                 }
                 st.success("Sharing settings updated!")
@@ -504,15 +491,12 @@ else:
                 st.write("This is how clients will see your campaign data")
                 
                 # Show metrics
-                preview_cols = st.columns(3 if include_costs else 2)
+                preview_cols = st.columns(2)
                 with preview_cols[0]:
                     st.metric("Total Views", f"{current_campaign['metrics']['total_views']:,}")
                 with preview_cols[1]:
                     st.metric("Total Likes", f"{current_campaign['metrics']['total_likes']:,}")
 
-                if include_costs:
-                    with preview_cols[2]:
-                        st.metric("Total Investment", f"₹{current_campaign['metrics']['total_cost']:,.2f}")
                 # Show influencer list if enabled
                 if include_influencer_details and current_campaign["influencers"]:
                     st.subheader("Campaign Influencers")
@@ -529,8 +513,6 @@ else:
                             "Shares": f"{inf.get('shares', 0):,}",
                             "Comments": f"{inf.get('comments', 0):,}"
                         }
-                        if include_costs:
-                            data_row["Cost"] = f"₹{inf['cost']:,.2f}"
                         
                         influencer_data.append(data_row)
                     
@@ -544,9 +526,6 @@ else:
                         "Shares": f"{sum(inf.get('shares', 0) for inf in current_campaign['influencers']):,}",
                         "Comments": f"{sum(inf.get('comments', 0) for inf in current_campaign['influencers']):,}"
                     }
-                    
-                    if include_costs:
-                        totals_row["Cost"] = f"₹{sum(inf['cost'] for inf in current_campaign['influencers']):,.2f}"
                     
                     influencer_data.append(totals_row)
                     
