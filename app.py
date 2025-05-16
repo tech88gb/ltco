@@ -97,6 +97,7 @@ with st.sidebar:
                 "name": f"Campaign {len(st.session_state.campaigns) + 1}",
                 "created_at": current_time,
                 "influencers": [],
+                "budget": 0,
                 "metrics": {
                     "total_reach": 0,
                     "total_cost": 0,
@@ -209,7 +210,18 @@ else:
             if new_name != current_campaign["name"]:
                 current_campaign["name"] = new_name
                 save_campaign_data()
-        
+            budget_value = float(current_campaign.get("budget", 0))
+            new_budget = st.number_input(
+                "Campaign Budget (₹)", 
+                min_value=0.0, 
+                value=budget_value,
+                step=1000.0,
+                format="%.2f"
+            )   
+            if new_budget != budget_value:
+                current_campaign["budget"] = float(new_budget)
+                save_campaign_data()
+
         with col2:
             st.write(f"Created: {current_campaign['created_at']}")
             st.write(f"Share Code: {current_campaign['share_token']}")
@@ -221,14 +233,13 @@ else:
             st.header("Campaign Dashboard")
             
             # Display campaign metrics
-            metrics_col1, metrics_col2, metrics_col3 = st.columns(3)
+            metrics_col1, metrics_col2, metrics_col3= st.columns(3)
             with metrics_col1:
-                st.metric("Total Cost", f"₹{current_campaign['metrics']['total_cost']:,.2f}")
-            with metrics_col2:
                 st.metric("Total Views", f"{current_campaign['metrics']['total_views']:,}")
-            with metrics_col3:
+            with metrics_col2:
                 st.metric("Total Likes", f"{current_campaign['metrics']['total_likes']:,}")
-            
+            with metrics_col3:
+                st.metric("Budget", f"₹{current_campaign.get('budget', 0):,.2f}")
             # Display engagement metrics
             metrics_col4, metrics_col5, metrics_col6 = st.columns(3)
             with metrics_col4:
@@ -238,6 +249,7 @@ else:
                 total_comments = current_campaign['metrics'].get('total_comments', 0)
                 st.metric("Total Comments", f"{total_comments:,}")
             
+
             # Placeholder for charts
             st.subheader("Performance Overview")
             if not current_campaign["influencers"]:
@@ -294,20 +306,21 @@ else:
                         index=["Instagram", "Facebook", "YouTube"].index(st.session_state.form_platform),
                         key="platform_input"
                     )
+                    
+                
+                with cols[1]:
+                    
+                    views = st.number_input("Views", min_value=0, step=1000, value=st.session_state.form_views, key="views_input")
                     post_type = st.selectbox(
                         "Post Type", 
                         ["Post", "Reel", "Video"],
                         index=["Post", "Reel", "Video"].index(st.session_state.form_post_type),
                         key="post_type_input"
-                    )
-                
-                with cols[1]:
-                    cost = st.number_input("Cost (₹)", min_value=0.0, step=100.0, value=st.session_state.form_cost, key="cost_input")
-                    views = st.number_input("Views", min_value=0, step=1000, value=st.session_state.form_views, key="views_input")
+                    )   
                 
                 # Add engagement metrics
                 st.subheader("Engagement Metrics")
-                engagement_cols = st.columns(3)
+                engagement_cols = st.columns(3) 
                 with engagement_cols[0]:
                     likes = st.number_input("Likes", min_value=0, step=100, value=st.session_state.form_likes, key="likes_input")
                 with engagement_cols[1]:
@@ -491,16 +504,15 @@ else:
                 st.write("This is how clients will see your campaign data")
                 
                 # Show metrics
-                preview_cols = st.columns(3)
+                preview_cols = st.columns(3 if include_costs else 2)
                 with preview_cols[0]:
                     st.metric("Total Views", f"{current_campaign['metrics']['total_views']:,}")
                 with preview_cols[1]:
-                    st.metric("Total Views", f"{current_campaign['metrics']['total_views']:,}")
-                
+                    st.metric("Total Likes", f"{current_campaign['metrics']['total_likes']:,}")
+
                 if include_costs:
                     with preview_cols[2]:
                         st.metric("Total Investment", f"₹{current_campaign['metrics']['total_cost']:,.2f}")
-                
                 # Show influencer list if enabled
                 if include_influencer_details and current_campaign["influencers"]:
                     st.subheader("Campaign Influencers")

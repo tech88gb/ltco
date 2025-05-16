@@ -31,6 +31,7 @@ def save_campaign(campaign_data):
         'name': campaign_data.get('name'),
         'created_at': campaign_data.get('created_at'),
         'share_token': campaign_data.get('share_token'),
+        'budget': campaign_data.get('budget', 0),
         'metrics': campaign_data.get('metrics', {})
     }
     
@@ -94,6 +95,7 @@ def get_campaigns():
             'name': campaign['name'],
             'created_at': campaign['created_at'],
             'share_token': campaign['share_token'],
+            'budget': campaign.get('budget', 0),
             'metrics': campaign['metrics'],
             'influencers': influencers_response.data
         }
@@ -122,6 +124,7 @@ def get_campaign_by_share_token(token):
         'name': campaign['name'],
         'created_at': campaign['created_at'],
         'share_token': campaign['share_token'],
+        'budget': campaign.get('budget', 0),
         'metrics': campaign['metrics'],
         'influencers': influencers_response.data
     }
