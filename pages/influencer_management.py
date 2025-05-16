@@ -43,8 +43,6 @@ if 'im_form_post_type' not in st.session_state:
     st.session_state.im_form_post_type = "Post"
 if 'im_form_post_url' not in st.session_state:
     st.session_state.im_form_post_url = ""
-if 'im_form_cost' not in st.session_state:
-    st.session_state.im_form_cost = 0.0
 if 'im_form_views' not in st.session_state:
     st.session_state.im_form_views = 0
 if 'im_form_likes' not in st.session_state:
@@ -69,7 +67,6 @@ def reset_form_fields():
     st.session_state.im_form_platform = "Instagram"
     st.session_state.im_form_post_type = "Post"
     st.session_state.im_form_post_url = ""
-    st.session_state.im_form_cost = 0.0
     st.session_state.im_form_views = 0
     st.session_state.im_form_likes = 0
     st.session_state.im_form_shares = 0
@@ -77,6 +74,30 @@ def reset_form_fields():
 
 # Page header
 st.title(f"Influencer Management: {current_campaign['name']}")
+
+# Show campaign budget information
+budget_col1, budget_col2 = st.columns(2)
+
+with budget_col1:
+    # Display current budget
+    current_budget = current_campaign.get('budget', 0.0)
+    st.metric("Campaign Budget", f"₹{current_budget:,.2f}")
+
+with budget_col2:
+    # Allow editing the budget
+    new_budget = st.number_input(
+        "Edit Budget (₹)",
+        min_value=0.0,
+        value=float(current_budget),
+        step=1000.0,
+        format="%.2f"
+    )
+    
+    if st.button("Update Budget"):
+        current_campaign['budget'] = float(new_budget)
+        save_campaign_data()
+        st.success("Budget updated successfully!")
+        st.rerun()
 
 # Create tabs for different sections
 tab1, tab2, tab3 = st.tabs(["Add Influencers", "Manage Existing", "Bulk Operations"])
@@ -92,23 +113,22 @@ with tab1:
             name = st.text_input("Influencer Name", value=st.session_state.im_form_name, key="im_name_input")
             platform = st.selectbox(
                 "Platform", 
-                ["Instagram", "Facebook", "YouTube"],
-                index=["Instagram", "Facebook", "YouTube"].index(st.session_state.im_form_platform) 
-                if st.session_state.im_form_platform in ["Instagram", "Facebook", "YouTube"] else 0,
+                ["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"],
+                index=["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"].index(st.session_state.im_form_platform) 
+                if st.session_state.im_form_platform in ["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"] else 0,
                 key="im_platform_input"
             )
             post_type = st.selectbox(
                 "Post Type", 
-                ["Post", "Reel", "Video"],
-                index=["Post", "Reel", "Video"].index(st.session_state.im_form_post_type)
-                if st.session_state.im_form_post_type in ["Post", "Reel", "Video"] else 0,
+                ["Post", "Story", "Reel", "Video", "Tweet", "Live Stream", "Collaboration", "Other"],
+                index=["Post", "Story", "Reel", "Video", "Tweet", "Live Stream", "Collaboration", "Other"].index(st.session_state.im_form_post_type)
+                if st.session_state.im_form_post_type in ["Post", "Story", "Reel", "Video", "Tweet", "Live Stream", "Collaboration", "Other"] else 0,
                 key="im_post_type_input"
             )
             post_url = st.text_input("Post URL (optional)", value=st.session_state.im_form_post_url, key="im_post_url_input")
         
         with col2:
             views = st.number_input("Views/Impressions", min_value=0, step=1000, value=st.session_state.im_form_views, key="im_views_input")
-            cost = st.number_input("Cost (₹)", min_value=0.0, step=100.0, value=st.session_state.im_form_cost, key="im_cost_input")
         
         # Add engagement metrics
         st.subheader("Engagement Metrics")
@@ -137,7 +157,6 @@ with tab1:
                     "post_type": post_type,
                     "post_url": post_url,
                     "views": int(views),
-                    "cost": float(cost),
                     "likes": int(likes),
                     "shares": int(shares),
                     "comments": int(comments)
@@ -147,7 +166,6 @@ with tab1:
                 current_campaign["influencers"].append(new_influencer)
                 
                 # Update metrics
-                current_campaign["metrics"]["total_cost"] += float(cost)
                 current_campaign["metrics"]["total_views"] += int(views)
                 current_campaign["metrics"]["total_likes"] = current_campaign["metrics"].get("total_likes", 0) + int(likes)
                 current_campaign["metrics"]["total_shares"] = current_campaign["metrics"].get("total_shares", 0) + int(shares)
@@ -201,7 +219,6 @@ with tab2:
                 'platform': '',
                 'post_type': '',
                 'views': df['views'].sum(),
-                'cost': df['cost'].sum(),
                 'likes': df['likes'].sum() if 'likes' in df.columns else 0,
                 'shares': df['shares'].sum() if 'shares' in df.columns else 0,
                 'comments': df['comments'].sum() if 'comments' in df.columns else 0
@@ -211,14 +228,15 @@ with tab2:
             df_with_totals = pd.concat([df, pd.DataFrame([totals])], ignore_index=True)
             
             # Display the dataframe with totals
+            display_columns = ['name', 'platform', 'post_type', 'views', 'likes', 'shares', 'comments']
             if 'id' in df_with_totals.columns:
-                df_with_totals = df_with_totals.drop(columns=['id'])
+                display_columns = [col for col in display_columns if col != 'id']
             if 'post_url' in df_with_totals.columns:
-                df_with_totals = df_with_totals.drop(columns=['post_url'])
+                display_columns = [col for col in display_columns if col != 'post_url']
             if 'campaign_id' in df_with_totals.columns:
-                df_with_totals = df_with_totals.drop(columns=['campaign_id'])
+                display_columns = [col for col in display_columns if col != 'campaign_id']
                 
-            st.dataframe(df_with_totals, use_container_width=True)
+            st.dataframe(df_with_totals[display_columns], use_container_width=True)
         
         # Display influencers with edit options
         st.subheader("Edit Influencers")
@@ -236,14 +254,14 @@ with tab2:
                     new_name = st.text_input("Name", influencer["name"], key=f"name_{influencer['id']}")
                     new_platform = st.selectbox(
                         "Platform", 
-                        ["Instagram", "Facebook", "YouTube"],
-                        index=["Instagram", "Facebook", "YouTube"].index(influencer["platform"]) if influencer["platform"] in ["Instagram", "Facebook", "YouTube"] else 0,
+                        ["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"],
+                        index=["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"].index(influencer["platform"]) if influencer["platform"] in ["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"] else 0,
                         key=f"platform_{influencer['id']}"
                     )
                     new_post_type = st.selectbox(
                         "Post Type", 
-                        ["Post", "Reel", "Video"],
-                        index=["Post", "Reel", "Video"].index(influencer["post_type"]) if influencer["post_type"] in ["Post", "Reel", "Video"] else 0,
+                        ["Post", "Story", "Reel", "Video", "Tweet", "Live Stream", "Collaboration", "Other"],
+                        index=["Post", "Story", "Reel", "Video", "Tweet", "Live Stream", "Collaboration", "Other"].index(influencer["post_type"]) if influencer["post_type"] in ["Post", "Story", "Reel", "Video", "Tweet", "Live Stream", "Collaboration", "Other"] else 0,
                         key=f"post_type_{influencer['id']}"
                     )
                     new_post_url = st.text_input("Post URL", influencer.get("post_url", ""), key=f"post_url_{influencer['id']}")
@@ -252,10 +270,6 @@ with tab2:
                     # Metrics - Note the explicit type casts and matching with step type
                     old_views = int(influencer["views"])
                     new_views = st.number_input("Views", min_value=0, value=old_views, step=1000, key=f"views_{influencer['id']}")
-                    
-                    # Ensure old_cost is a float
-                    old_cost = float(influencer["cost"])
-                    new_cost = st.number_input("Cost (₹)", min_value=0.0, value=old_cost, step=100.0, key=f"cost_{influencer['id']}")
                 
                 # Engagement metrics
                 engagement_cols = st.columns(3)
@@ -275,13 +289,11 @@ with tab2:
                 if st.button("Save Changes", key=f"save_{influencer['id']}"):
                     # Update campaign metrics by calculating the differences
                     views_diff = int(new_views) - int(old_views)
-                    cost_diff = float(new_cost) - float(old_cost)
                     likes_diff = int(new_likes) - int(old_likes)
                     shares_diff = int(new_shares) - int(old_shares)
                     comments_diff = int(new_comments) - int(old_comments)
                     
                     current_campaign["metrics"]["total_views"] += views_diff
-                    current_campaign["metrics"]["total_cost"] += cost_diff
                     current_campaign["metrics"]["total_likes"] = current_campaign["metrics"].get("total_likes", 0) + likes_diff
                     current_campaign["metrics"]["total_shares"] = current_campaign["metrics"].get("total_shares", 0) + shares_diff
                     current_campaign["metrics"]["total_comments"] = current_campaign["metrics"].get("total_comments", 0) + comments_diff
@@ -292,7 +304,6 @@ with tab2:
                     influencer["post_type"] = new_post_type
                     influencer["post_url"] = new_post_url
                     influencer["views"] = int(new_views)
-                    influencer["cost"] = float(new_cost)
                     influencer["likes"] = int(new_likes)
                     influencer["shares"] = int(new_shares)
                     influencer["comments"] = int(new_comments)
@@ -314,7 +325,6 @@ with tab2:
                             
                             # Update metrics before removing
                             current_campaign["metrics"]["total_views"] -= int(influencer["views"])
-                            current_campaign["metrics"]["total_cost"] -= float(influencer["cost"])
                             current_campaign["metrics"]["total_likes"] = current_campaign["metrics"].get("total_likes", 0) - int(influencer.get("likes", 0))
                             current_campaign["metrics"]["total_shares"] = current_campaign["metrics"].get("total_shares", 0) - int(influencer.get("shares", 0))
                             current_campaign["metrics"]["total_comments"] = current_campaign["metrics"].get("total_comments", 0) - int(influencer.get("comments", 0))
@@ -345,11 +355,11 @@ with tab3:
     # Sample CSV template
     st.write("Download a CSV template to see the required format:")
     
-    # Generate sample CSV data with new engagement metrics
-    sample_data = """name,platform,post_type,views,cost,likes,shares,comments,post_url
-Influencer1,Instagram,Post,15000,500.0,1200,45,78,https://instagram.com/post1
-Influencer2,TikTok,Video,50000,750.0,3500,120,95,https://tiktok.com/video2
-Influencer3,YouTube,Collaboration,25000,1200.0,850,65,42,https://youtube.com/video3"""
+    # Generate sample CSV data with new engagement metrics (no cost field)
+    sample_data = """name,platform,post_type,views,likes,shares,comments,post_url
+Influencer1,Instagram,Post,15000,1200,45,78,https://instagram.com/post1
+Influencer2,TikTok,Video,50000,3500,120,95,https://tiktok.com/video2
+Influencer3,YouTube,Collaboration,25000,850,65,42,https://youtube.com/video3"""
     
     st.download_button(
         label="Download CSV Template",
@@ -371,7 +381,7 @@ Influencer3,YouTube,Collaboration,25000,1200.0,850,65,42,https://youtube.com/vid
             st.dataframe(df.head())
             
             # Check required columns
-            required_columns = ["name", "platform", "post_type", "views", "cost"]
+            required_columns = ["name", "platform", "post_type", "views"]
             missing_columns = [col for col in required_columns if col not in df.columns]
             
             if missing_columns:
@@ -381,7 +391,6 @@ Influencer3,YouTube,Collaboration,25000,1200.0,850,65,42,https://youtube.com/vid
                 if st.button("Import Influencers"):
                     new_influencers = []
                     total_views = 0
-                    total_cost = 0.0
                     total_likes = 0
                     total_shares = 0
                     total_comments = 0
@@ -396,7 +405,6 @@ Influencer3,YouTube,Collaboration,25000,1200.0,850,65,42,https://youtube.com/vid
                             "platform": row["platform"],
                             "post_type": row["post_type"],
                             "views": int(row["views"]),
-                            "cost": float(row["cost"]),
                             "likes": int(row.get("likes", 0)),
                             "shares": int(row.get("shares", 0)),
                             "comments": int(row.get("comments", 0))
@@ -410,7 +418,6 @@ Influencer3,YouTube,Collaboration,25000,1200.0,850,65,42,https://youtube.com/vid
                         
                         # Update totals
                         total_views += int(row["views"])
-                        total_cost += float(row["cost"])
                         total_likes += int(row.get("likes", 0))
                         total_shares += int(row.get("shares", 0))
                         total_comments += int(row.get("comments", 0))
@@ -420,7 +427,6 @@ Influencer3,YouTube,Collaboration,25000,1200.0,850,65,42,https://youtube.com/vid
                     
                     # Update metrics
                     current_campaign["metrics"]["total_views"] += total_views
-                    current_campaign["metrics"]["total_cost"] += total_cost
                     current_campaign["metrics"]["total_likes"] = current_campaign["metrics"].get("total_likes", 0) + total_likes
                     current_campaign["metrics"]["total_shares"] = current_campaign["metrics"].get("total_shares", 0) + total_shares
                     current_campaign["metrics"]["total_comments"] = current_campaign["metrics"].get("total_comments", 0) + total_comments
@@ -442,10 +448,17 @@ Influencer3,YouTube,Collaboration,25000,1200.0,850,65,42,https://youtube.com/vid
         export_df = pd.DataFrame(current_campaign["influencers"])
         
         # Remove internal ID and campaign_id fields
+        columns_to_drop = []
         if "id" in export_df.columns:
-            export_df = export_df.drop(columns=["id"])
+            columns_to_drop.append("id")
         if "campaign_id" in export_df.columns:
-            export_df = export_df.drop(columns=["campaign_id"])
+            columns_to_drop.append("campaign_id")
+        # Remove cost field if it exists (backward compatibility)
+        if "cost" in export_df.columns:
+            columns_to_drop.append("cost")
+            
+        if columns_to_drop:
+            export_df = export_df.drop(columns=columns_to_drop)
         
         # Prepare CSV
         csv = export_df.to_csv(index=False)
