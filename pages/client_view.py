@@ -154,25 +154,25 @@ filtered_df = None
 if sharing_settings.get('include_metrics', True):
     st.subheader("Campaign Performance")
     
-    # First row of metrics
-    metric_cols1 = st.columns(2 if sharing_settings.get('include_costs', False) else 1)
+    # Create budget display section
+    budget = campaign.get('budget', 0)
     
+    # First row of metrics - Views and other key metrics
+    metric_cols1 = st.columns(3)
     with metric_cols1[0]:
+        st.metric("Budget", f"₹{budget:,.2f}")
+    with metric_cols1[1]:
         st.metric("Total Views", f"{campaign['metrics']['total_views']:,}")
-    
-    if sharing_settings.get('include_costs', False):
-        with metric_cols1[1]:
-            st.metric("Total Investment", f"₹{campaign['metrics']['total_cost']:,.2f}")
+    with metric_cols1[2]:
+        st.metric("Total Likes", f"{campaign['metrics'].get('total_likes', 0):,}")
     
     # Show engagement metrics if enabled
     if sharing_settings.get('include_engagement_metrics', True):
         # Second row of metrics for engagement
-        metric_cols2 = st.columns(3)
+        metric_cols2 = st.columns(2)
         with metric_cols2[0]:
-            st.metric("Total Likes", f"{campaign['metrics'].get('total_likes', 0):,}")
-        with metric_cols2[1]:
             st.metric("Total Shares", f"{campaign['metrics'].get('total_shares', 0):,}")
-        with metric_cols2[2]:
+        with metric_cols2[1]:
             st.metric("Total Comments", f"{campaign['metrics'].get('total_comments', 0):,}")
 
 # Show dashboard/charts if enabled and influencers exist
