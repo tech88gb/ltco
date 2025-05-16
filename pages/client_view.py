@@ -119,7 +119,7 @@ st.title(f"{campaign['name']}")
 sharing_settings = campaign.get('sharing_settings', {
     'include_dashboard': True,
     'include_metrics': True,
-    'include_costs': False,
+    'include_budget': False,
     'include_influencer_details': True,
     'include_engagement_metrics': True,
     'client_name': '',
@@ -131,7 +131,7 @@ if sharing_settings is None:
     sharing_settings = {
         'include_dashboard': True,
         'include_metrics': True,
-        'include_costs': False,
+        'include_budget': False,
         'include_influencer_details': True,
         'include_engagement_metrics': True,
         'client_name': '',
@@ -155,14 +155,14 @@ if sharing_settings.get('include_metrics', True):
     st.subheader("Campaign Performance")
     
     # First row of metrics
-    metric_cols1 = st.columns(2 if sharing_settings.get('include_costs', False) else 1)
+    metric_cols1 = st.columns(2 if sharing_settings.get('include_budget', False) else 1)
     
     with metric_cols1[0]:
         st.metric("Total Views", f"{campaign['metrics']['total_views']:,}")
     
-    if sharing_settings.get('include_costs', False):
+    if sharing_settings.get('include_budget', False):
         with metric_cols1[1]:
-            st.metric("Total Investment", f"₹{campaign['metrics']['total_cost']:,.2f}")
+            st.metric("Campaign Budget", f"₹{campaign.get('budget', 0):,.2f}")
     
     # Show engagement metrics if enabled
     if sharing_settings.get('include_engagement_metrics', True):
@@ -247,32 +247,63 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
             st.plotly_chart(fig_engagement, use_container_width=True)
         
         with engagement_cols[1]:
-            # Engagement breakdown by type
-            engagement_by_type = influencers_df.groupby('post_type').agg({
-                'likes': 'sum',
-                'shares': 'sum',
-                'comments': 'sum'
-            }).reset_index()
+            # Engagement distribution
+            engagement_type_totals = {
+                'Type': ['Likes', 'Shares', 'Comments'],
+                'Count': [
+                    influencers_df['likes'].sum(),
+                    influencers_df['shares'].sum(),
+                    influencers_df['comments'].sum()
+                ]
+            }
+            engagement_df = pd.DataFrame(engagement_type_totals)
             
-            # Reshape for plotting
-            engagement_type_melted = pd.melt(
-                engagement_by_type,
-                id_vars=['post_type'],
-                value_vars=['likes', 'shares', 'comments'],
-                var_name='Engagement Type',
-                value_name='Count'
-            )
-            
-            fig_engagement_type = px.bar(
-                engagement_type_melted,
-                x='post_type',
-                y='Count',
-                color='Engagement Type',
-                title='Engagement by Post Type',
-                barmode='group',
+            fig_engagement_dist = px.pie(
+                engagement_df,
+                values='Count',
+                names='Type',
+                title='Engagement Distribution',
+                hole=0.4,
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
-            st.plotly_chart(fig_engagement_type, use_container_width=True)
+            st.plotly_chart(fig_engagement_dist, use_container_width=True)
+    
+    # Show budget charts if enabled
+    if sharing_settings.get('include_budget', False) and campaign.get('budget', 0) > 0:
+        budget_cols = st.columns(2)
+        
+        with budget_cols[0]:
+            # Budget per platform
+            if len(platform_views) > 0:
+                # Calculate theoretical budget allocation based on views
+                total_views = platform_views['views'].sum()
+                budget = campaign.get('budget', 0)
+                
+                platform_views['budget_allocation'] = platform_views['views'] / total_views * budget
+                
+                fig_budget = px.pie(
+                    platform_views,
+                    values='budget_allocation',
+                    names='platform',
+                    title='Theoretical Budget Allocation by Platform',
+                    color_discrete_sequence=px.colors.qualitative.Pastel
+                )
+                st.plotly_chart(fig_budget, use_container_width=True)
+        
+        with budget_cols[1]:
+            # Cost per view
+            if campaign['metrics']['total_views'] > 0:
+                budget = campaign.get('budget', 0)
+                cost_per_view = budget / campaign['metrics']['total_views']
+                
+                fig_cpv = go.Figure(go.Indicator(
+                    mode="number",
+                    value=cost_per_view,
+                    number={'prefix': "₹", 'valueformat': '.4f'},
+                    title={'text': "Budget per View"},
+                    domain={'x': [0, 1], 'y': [0, 1]}
+                ))
+                st.plotly_chart(fig_cpv, use_container_width=True)
 
 # Show influencer details if enabled
 if sharing_settings.get('include_influencer_details', True) and campaign['influencers']:
@@ -302,8 +333,6 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         sort_options = ["Name", "Views"]
         if sharing_settings.get('include_engagement_metrics', True):
             sort_options.extend(["Likes", "Shares", "Comments"])
-        #if sharing_settings.get('include_costs', False):
-         #   sort_options.append("Investment")
         
         sort_by = st.selectbox("Sort By", sort_options, key="sort_by_filter")
     
@@ -327,8 +356,6 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         filtered_df = filtered_df.sort_values('shares', ascending=False)
     elif sort_by == "Comments":
         filtered_df = filtered_df.sort_values('comments', ascending=False)
-    #elif sort_by == "Investment":
-     #   filtered_df = filtered_df.sort_values('cost', ascending=False)
     
     # Display filtered results
     if not filtered_df.empty:
@@ -338,9 +365,6 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         # Add engagement metrics if enabled
         if sharing_settings.get('include_engagement_metrics', True):
             display_columns.extend(['likes', 'shares', 'comments'])
-        
-        #if sharing_settings.get('include_costs', False):
-         #   display_columns.append('cost')
         
         if 'post_url' in filtered_df.columns and any(not pd.isna(url) for url in filtered_df['post_url']):
             display_columns.append('post_url')
@@ -354,7 +378,6 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
             'platform': 'Platform',
             'post_type': 'Post Type', 
             'views': 'Views',
-            #'cost': 'Investment (₹)',
             'post_url': 'Post URL',
             'likes': 'Likes',
             'shares': 'Shares',
@@ -366,9 +389,6 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         # Format numeric columns
         if 'Views' in filtered_display_df.columns:
             filtered_display_df['Views'] = filtered_display_df['Views'].apply(lambda x: f"{x:,}")
-        
-        #if 'Investment (₹)' in filtered_display_df.columns:
-         #   filtered_display_df['Investment (₹)'] = filtered_display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
         
         if 'Likes' in filtered_display_df.columns:
             filtered_display_df['Likes'] = filtered_display_df['Likes'].apply(lambda x: f"{x:,}")
@@ -386,9 +406,6 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
             'Post Type': '',
             'Views': f"{filtered_df['views'].sum():,}"
         }
-        
-        #if 'Investment (₹)' in filtered_display_df.columns:
-         #   filtered_totals['Investment (₹)'] = f"₹{filtered_df['cost'].sum():,.2f}"
         
         if 'Likes' in filtered_display_df.columns:
             filtered_totals['Likes'] = f"{filtered_df['likes'].sum():,}"

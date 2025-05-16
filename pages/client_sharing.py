@@ -100,7 +100,7 @@ with tab1:
         current_campaign['sharing_settings'] = {
             'include_dashboard': True,
             'include_metrics': True,
-            'include_costs': False,
+            'include_budget': False,
             'include_influencer_details': True,
             'include_engagement_metrics': True,
             'expiry_date': None,
@@ -133,11 +133,11 @@ with tab1:
         help="Show likes, shares, and comments metrics"
     )
     
-    # Cost permission
-    include_costs = st.checkbox(
-        "Include Cost Information", 
-        value=sharing_settings.get('include_costs', False),
-        help="Show financial data such as influencer costs"
+    # Budget permission
+    include_budget = st.checkbox(
+        "Include Budget Information", 
+        value=sharing_settings.get('include_budget', False),
+        help="Show campaign budget information"
     )
     
     # Influencer details permission
@@ -184,7 +184,7 @@ with tab1:
             'include_dashboard': include_dashboard,
             'include_metrics': include_metrics,
             'include_engagement_metrics': include_engagement_metrics,
-            'include_costs': include_costs,
+            'include_budget': include_budget,
             'include_influencer_details': include_influencer_details,
             'expiry_date': expiry_date.strftime("%Y-%m-%d") if expiry_date else None,
             'access_count': sharing_settings.get('access_count', 0),
@@ -207,7 +207,7 @@ with tab2:
             'include_dashboard': True,
             'include_metrics': True,
             'include_engagement_metrics': True,
-            'include_costs': False,
+            'include_budget': False,
             'include_influencer_details': True,
             'client_name': '',
             'custom_message': ''
@@ -230,14 +230,14 @@ with tab2:
         st.subheader("Campaign Performance")
         
         # First row of metrics
-        metric_cols1 = st.columns(2 if sharing_settings.get('include_costs', False) else 1)
+        metric_cols1 = st.columns(2 if sharing_settings.get('include_budget', False) else 1)
         
         with metric_cols1[0]:
             st.metric("Total Views", f"{current_campaign['metrics']['total_views']:,}")
         
-        if sharing_settings.get('include_costs', False):
+        if sharing_settings.get('include_budget', False):
             with metric_cols1[1]:
-                st.metric("Total Investment", f"₹{current_campaign['metrics']['total_cost']:,.2f}")
+                st.metric("Campaign Budget", f"₹{current_campaign.get('budget', 0):,.2f}")
         
         # Show engagement metrics if enabled
         if sharing_settings.get('include_engagement_metrics', True):
@@ -337,42 +337,34 @@ with tab2:
                 )
                 st.plotly_chart(fig_views, use_container_width=True)
         
-        # Show cost charts if enabled
-        if sharing_settings.get('include_costs', False):
-            chart_col3, chart_col4 = st.columns(2)
+        # Show budget charts if enabled
+        if sharing_settings.get('include_budget', False) and current_campaign.get('budget', 0) > 0:
+            budget_cols = st.columns(2)
             
-            with chart_col3:
-                # Cost by platform bar chart
-                platform_costs = influencers_df.groupby('platform')['cost'].sum().reset_index()
-                
-                fig_costs = px.bar(
-                    platform_costs,
-                    x='platform',
-                    y='cost',
-                    title='Investment by Platform',
-                    labels={'platform': 'Platform', 'cost': 'Investment (₹)'},
-                    color='platform',
-                    color_discrete_sequence=px.colors.qualitative.Pastel
-                )
-                st.plotly_chart(fig_costs, use_container_width=True)
+            with budget_cols[0]:
+                # Budget overview
+                fig_budget = go.Figure()
+                fig_budget.add_trace(go.Indicator(
+                    mode="number+delta",
+                    value=current_campaign.get('budget', 0),
+                    title={"text": "Campaign Budget (₹)"},
+                    domain={'x': [0, 1], 'y': [0, 1]}
+                ))
+                st.plotly_chart(fig_budget, use_container_width=True)
             
-            with chart_col4:
-                # Calculate efficiency (views per cost)
-                influencers_df['efficiency'] = influencers_df['views'] / influencers_df['cost'].apply(lambda x: max(x, 1))
-                
-                # Efficiency by platform
-                platform_efficiency = influencers_df.groupby('platform')['efficiency'].mean().reset_index()
-                
-                fig_eff = px.bar(
-                    platform_efficiency,
-                    x='platform',
-                    y='efficiency',
-                    title='Performance by Platform (Views per ₹)',
-                    labels={'platform': 'Platform', 'efficiency': 'Views per ₹'},
-                    color='platform',
-                    color_discrete_sequence=px.colors.qualitative.Pastel
-                )
-                st.plotly_chart(fig_eff, use_container_width=True)
+            with budget_cols[1]:
+                # Budget efficiency (views per rupee)
+                if current_campaign['metrics']['total_views'] > 0:
+                    views_per_rupee = current_campaign['metrics']['total_views'] / current_campaign.get('budget', 1)
+                    
+                    fig_efficiency = go.Figure()
+                    fig_efficiency.add_trace(go.Indicator(
+                        mode="number",
+                        value=views_per_rupee,
+                        title={"text": "Views per ₹"},
+                        domain={'x': [0, 1], 'y': [0, 1]}
+                    ))
+                    st.plotly_chart(fig_efficiency, use_container_width=True)
     
     # Show influencer details if enabled
     if sharing_settings.get('include_influencer_details', True) and current_campaign["influencers"]:
@@ -388,9 +380,6 @@ with tab2:
         if sharing_settings.get('include_engagement_metrics', True):
             display_columns.extend(['likes', 'shares', 'comments'])
         
-        if sharing_settings.get('include_costs', False):
-            display_columns.append('cost')
-        
         if 'post_url' in influencers_df.columns:
             display_columns.append('post_url')
         
@@ -403,7 +392,6 @@ with tab2:
             'platform': 'Platform',
             'post_type': 'Post Type',
             'views': 'Views',
-            'cost': 'Investment (₹)',
             'post_url': 'Post URL',
             'likes': 'Likes',
             'shares': 'Shares',
@@ -415,9 +403,6 @@ with tab2:
         # Format numeric columns
         if 'Views' in display_df.columns:
             display_df['Views'] = display_df['Views'].apply(lambda x: f"{x:,}")
-        
-        if 'Investment (₹)' in display_df.columns:
-            display_df['Investment (₹)'] = display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
         
         if 'Likes' in display_df.columns:
             display_df['Likes'] = display_df['Likes'].apply(lambda x: f"{x:,}")
@@ -435,9 +420,6 @@ with tab2:
             'Post Type': '',
             'Views': f"{influencers_df['views'].sum():,}"
         }
-        
-        if 'Investment (₹)' in display_df.columns:
-            totals['Investment (₹)'] = f"₹{influencers_df['cost'].sum():,.2f}"
         
         if 'Likes' in display_df.columns:
             totals['Likes'] = f"{influencers_df['likes'].sum():,}"
