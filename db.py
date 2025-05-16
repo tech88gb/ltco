@@ -1,9 +1,10 @@
-import streamlit as st
 import os
+from supabase import create_client
+import uuid
 import time
 from datetime import datetime
 from dotenv import load_dotenv
-#gdsjabsdj
+
 # Load environment variables
 load_dotenv()
 
