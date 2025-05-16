@@ -157,44 +157,30 @@ else:
         )
         st.plotly_chart(fig_post, use_container_width=True)
     
-    with chart_col4:
-        # Budget allocation
-        # Create a pie chart showing how the budget is distributed
-        # This is conceptual since we don't allocate budget per influencer anymore
-        total_influencers = len(influencers_df)
-        if total_influencers > 0 and current_campaign.get('budget', 0) > 0:
-            # Just for visualization, we'll distribute budget equally
-            fig_budget = px.pie(
-                names=['Allocated Budget'],
-                values=[current_campaign.get('budget', 0)],
-                title='Campaign Budget Overview',
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            fig_budget.update_traces(textinfo='value+percent')
-            st.plotly_chart(fig_budget, use_container_width=True)
-        else:
-            st.info("Set a budget for your campaign to see budget visualization")
+    # Removed Campaign Budget Overview pie chart from chart_col4
+    # with chart_col4:
+    #     # Budget allocation
+    #     # Create a pie chart showing how the budget is distributed
+    #     # This is conceptual since we don't allocate budget per influencer anymore
+    #     total_influencers = len(influencers_df)
+    #     if total_influencers > 0 and current_campaign.get('budget', 0) > 0:
+    #         # Just for visualization, we'll distribute budget equally
+    #         fig_budget = px.pie(
+    #             names=['Allocated Budget'],
+    #             values=[current_campaign.get('budget', 0)],
+    #             title='Campaign Budget Overview',
+    #             color_discrete_sequence=px.colors.qualitative.Pastel
+    #         )
+    #         fig_budget.update_traces(textinfo='value+percent')
+    #         st.plotly_chart(fig_budget, use_container_width=True)
+    #     else:
+    #         st.info("Set a budget for your campaign to see budget visualization")
     
     # Charts Row 3 - Engagement Metrics
     st.subheader("Engagement Analysis")
-    chart_col5, chart_col6 = st.columns(2)
+    engagement_col1, engagement_col2 = st.columns(2)
     
-    with chart_col5:
-        # Likes by platform
-        platform_likes = influencers_df.groupby('platform')['likes'].sum().reset_index()
-        
-        fig_likes = px.bar(
-            platform_likes,
-            x='platform',
-            y='likes',
-            title='Likes by Platform',
-            labels={'platform': 'Platform', 'likes': 'Likes'},
-            color='platform',
-            color_discrete_sequence=px.colors.qualitative.Pastel
-        )
-        st.plotly_chart(fig_likes, use_container_width=True)
-    
-    with chart_col6:
+    with engagement_col1:
         # Engagement breakdown by platform
         engagement_data = influencers_df.groupby('platform').agg({
             'likes': 'sum',
@@ -223,10 +209,7 @@ else:
         )
         st.plotly_chart(fig_engagement_breakdown, use_container_width=True)
     
-    # Charts Row 4 - Budget Analysis
-    chart_col7, chart_col8 = st.columns(2)
-    
-    with chart_col7:
+    with engagement_col2:
         # Budget efficiency - Views per theoretical budget allocation
         total_views = influencers_df['views'].sum()
         campaign_budget = current_campaign.get('budget', 0)
@@ -253,18 +236,6 @@ else:
         else:
             st.info("Need views and budget to calculate efficiency")
     
-    with chart_col8:
-        # Views distribution
-        fig_views_dist = px.histogram(
-            influencers_df,
-            x='views',
-            nbins=10,
-            title='Distribution of Views Across Influencers',
-            labels={'views': 'Views'},
-            color_discrete_sequence=px.colors.qualitative.Pastel
-        )
-        st.plotly_chart(fig_views_dist, use_container_width=True)
-
     # Detailed influencer performance
     st.header("Influencer Performance")
     
