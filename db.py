@@ -51,6 +51,7 @@ def save_campaign(campaign_data):
 def save_influencer(influencer_data):
     """Save influencer data to Supabase with only the fields in your schema"""
     # For influencer ID, also use numeric ID
+    #changed
     influencer_id = influencer_data.get('id')
     if not influencer_id or not isinstance(influencer_id, int):
         influencer_id = generate_numeric_id()
