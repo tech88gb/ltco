@@ -19,6 +19,11 @@ hide_streamlit_elements = """
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
+
+/* Hide the "Client View" link in the sidebar */
+[data-testid="stSidebarNav"] a[href*="client_view"] {
+    display: none;
+}
 </style>
 """
 st.markdown(hide_streamlit_elements, unsafe_allow_html=True)
