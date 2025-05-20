@@ -185,19 +185,19 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
     chart_cols = st.columns(2)
     
     with chart_cols[0]:
-        # Post type distribution
-        post_counts = influencers_df['post_type'].value_counts().reset_index()
-        post_counts.columns = ['Post Type', 'Count']
-        
-        fig_post = px.bar(
-            post_counts,
-            x='Post Type',
-            y='Count',
-            title='Content by Post Type',
-            color='Post Type',
+        # Platform distribution pie chart - Added from Campaign Dashboard
+        platform_counts = influencers_df['platform'].value_counts().reset_index()
+        platform_counts.columns = ['Platform', 'Count']
+
+        fig_platform = px.pie(
+            platform_counts,
+            values='Count',
+            names='Platform',
+            title='Influencers by Platform',
+            hole=0.4,
             color_discrete_sequence=px.colors.qualitative.Pastel
         )
-        st.plotly_chart(fig_post, use_container_width=True)
+        st.plotly_chart(fig_platform, use_container_width=True)
     
     with chart_cols[1]:
         # Views by platform
@@ -216,6 +216,7 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
     
     # Show engagement charts if enabled
     if sharing_settings.get('include_engagement_metrics', True):
+        st.subheader("Engagement Analysis") # Added subheader for clarity
         engagement_cols = st.columns(2)
         
         with engagement_cols[0]:
@@ -247,32 +248,36 @@ if sharing_settings.get('include_dashboard', True) and campaign['influencers']:
             st.plotly_chart(fig_engagement, use_container_width=True)
         
         with engagement_cols[1]:
-            # Engagement breakdown by type
-            engagement_by_type = influencers_df.groupby('post_type').agg({
-                'likes': 'sum',
-                'shares': 'sum',
-                'comments': 'sum'
-            }).reset_index()
-            
-            # Reshape for plotting
-            engagement_type_melted = pd.melt(
-                engagement_by_type,
-                id_vars=['post_type'],
-                value_vars=['likes', 'shares', 'comments'],
-                var_name='Engagement Type',
-                value_name='Count'
-            )
-            
-            fig_engagement_type = px.bar(
-                engagement_type_melted,
-                x='post_type',
-                y='Count',
-                color='Engagement Type',
-                title='Engagement by Post Type',
-                barmode='group',
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            st.plotly_chart(fig_engagement_type, use_container_width=True)
+            # Budget efficiency - Views per theoretical budget allocation - Added from Campaign Dashboard
+            total_views = influencers_df['views'].sum()
+            campaign_budget = campaign.get('budget', 0) # Use campaign variable
+
+            if total_views > 0 and campaign_budget > 0:
+                # Calculate views per rupee
+                views_per_rupee = total_views / campaign_budget
+
+                # Create a gauge chart for budget efficiency
+                fig_views_per_rupee = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=views_per_rupee,
+                    title={'text': "Views per ₹"},
+                    gauge={
+                        'axis': {'range': [0, views_per_rupee * 2]},
+                        'bar': {'color': "lightblue"},
+                        'steps': [
+                            {'range': [0, views_per_rupee/2], 'color': "lightgray"},
+                            {'range': [views_per_rupee/2, views_per_rupee * 1.5], 'color': "gray"}
+                        ],
+                        'threshold': {
+                            'line': {'color': "red", 'width': 4},
+                            'thickness': 0.75,
+                            'value': views_per_rupee * 1.5
+                        }
+                    }
+                ))
+                st.plotly_chart(fig_views_per_rupee, use_container_width=True)
+            else:
+                st.info("Need views and budget to calculate efficiency")
 
 # Show influencer details if enabled
 if sharing_settings.get('include_influencer_details', True) and campaign['influencers']:
