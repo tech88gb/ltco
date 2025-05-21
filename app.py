@@ -47,6 +47,8 @@ if 'form_platform' not in st.session_state:
     st.session_state.form_platform = "Instagram"
 if 'form_post_type' not in st.session_state:
     st.session_state.form_post_type = "Post"
+if 'form_post_url' not in st.session_state:  # Add the post_url initialization
+    st.session_state.form_post_url = ""
 if 'form_views' not in st.session_state:
     st.session_state.form_views = 0
 if 'form_likes' not in st.session_state:
@@ -68,6 +70,7 @@ def reset_form_fields():
     st.session_state.form_name = ""
     st.session_state.form_platform = "Instagram"
     st.session_state.form_post_type = "Post"
+    st.session_state.form_post_url = ""  # Reset the post_url field
     st.session_state.form_views = 0
     st.session_state.form_likes = 0
     st.session_state.form_shares = 0
@@ -307,16 +310,17 @@ else:
                         index=["Instagram", "Facebook", "YouTube"].index(st.session_state.form_platform),
                         key="platform_input"
                     )
-                    
-                
-                with cols[1]:
-                    views = st.number_input("Views", min_value=0, step=1000, value=st.session_state.form_views, key="views_input")
                     post_type = st.selectbox(
                         "Post Type", 
                         ["Post", "Reel", "Video"],
                         index=["Post", "Reel", "Video"].index(st.session_state.form_post_type),
                         key="post_type_input"
-                    )   
+                    )
+                    # Add the post URL field here
+                    post_url = st.text_input("Post URL (optional)", value=st.session_state.form_post_url, key="post_url_input")
+                
+                with cols[1]:
+                    views = st.number_input("Views", min_value=0, step=1000, value=st.session_state.form_views, key="views_input")
                 
                 # Add engagement metrics
                 st.subheader("Engagement Metrics")
@@ -340,6 +344,7 @@ else:
                         "name": name,
                         "platform": platform,
                         "post_type": post_type,
+                        "post_url": post_url,  # Include post_url in the influencer data
                         "views": int(views),
                         "likes": int(likes),
                         "shares": int(shares),
@@ -404,6 +409,9 @@ else:
                         with cols[0]:
                             st.write(f"**Post Type:** {influencer['post_type']}")
                             st.write(f"**Views:** {influencer['views']:,}")
+                            # Display post URL if it exists
+                            if influencer.get('post_url'):
+                                st.write(f"**Post URL:** [{influencer['post_url']}]({influencer['post_url']})")
                         
                         with cols[1]:
                             # Engagement metrics
@@ -518,6 +526,10 @@ else:
                             "Shares": f"{inf.get('shares', 0):,}",
                             "Comments": f"{inf.get('comments', 0):,}"
                         }
+                        
+                        # Add post URL to the display if it exists
+                        if inf.get('post_url'):
+                            data_row["Post URL"] = inf['post_url']
                         
                         influencer_data.append(data_row)
                     
