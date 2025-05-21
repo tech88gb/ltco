@@ -42,6 +42,8 @@ if st.session_state.current_campaign_id is None:
 # Initialize form fields in session state if they don't exist
 if 'im_form_name' not in st.session_state:
     st.session_state.im_form_name = ""
+if 'im_form_username' not in st.session_state:
+    st.session_state.im_form_username = ""
 if 'im_form_platform' not in st.session_state:
     st.session_state.im_form_platform = "Instagram"
 if 'im_form_post_type' not in st.session_state:
@@ -69,6 +71,7 @@ def save_campaign_data():
 def reset_form_fields():
     """Reset all form fields to defaults"""
     st.session_state.im_form_name = ""
+    st.session_state.im_form_username = ""
     st.session_state.im_form_platform = "Instagram"
     st.session_state.im_form_post_type = "Post"
     st.session_state.im_form_post_url = ""
@@ -116,6 +119,7 @@ with tab1:
         
         with col1:
             name = st.text_input("Influencer Name", value=st.session_state.im_form_name, key="im_name_input")
+            username = st.text_input("Username (e.g. @username)", value=st.session_state.im_form_username, key="im_username_input")
             platform = st.selectbox(
                 "Platform", 
                 ["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"],
@@ -220,7 +224,7 @@ with tab2:
         # Calculate totals row
         if not df.empty:
             totals = {
-                'name': 'TOTAL',
+                'name': 'TOTAL',    
                 'platform': '',
                 'post_type': '',
                 'views': df['views'].sum(),
@@ -257,6 +261,7 @@ with tab2:
                 with col1:
                     # Basic info
                     new_name = st.text_input("Name", influencer["name"], key=f"name_{influencer['id']}")
+                    new_username = st.text_input("Username", influencer.get("username", ""), key=f"username_{influencer['id']}")
                     new_platform = st.selectbox(
                         "Platform", 
                         ["Instagram", "TikTok", "YouTube", "Twitter/X", "Facebook", "LinkedIn", "Twitch", "Other"],
@@ -305,6 +310,7 @@ with tab2:
                     
                     # Update influencer data - ensure each value has the correct type
                     influencer["name"] = new_name
+                    influencer["username"] = new_username
                     influencer["platform"] = new_platform
                     influencer["post_type"] = new_post_type
                     influencer["post_url"] = new_post_url

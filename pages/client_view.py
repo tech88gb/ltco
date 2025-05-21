@@ -304,11 +304,9 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         )
     
     with filter_cols[2]:
-        sort_options = ["Name", "Views"]
+        sort_options = ["Name", "Username", "Views"]  # Added Username to sort options
         if sharing_settings.get('include_engagement_metrics', True):
             sort_options.extend(["Likes", "Shares", "Comments"])
-        #if sharing_settings.get('include_costs', False):
-         #   sort_options.append("Investment")
         
         sort_by = st.selectbox("Sort By", sort_options, key="sort_by_filter")
     
@@ -324,6 +322,8 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
     # Apply sorting
     if sort_by == "Name":
         filtered_df = filtered_df.sort_values('name')
+    elif sort_by == "Username":  # Added sorting by username
+        filtered_df = filtered_df.sort_values('username')
     elif sort_by == "Views":
         filtered_df = filtered_df.sort_values('views', ascending=False)
     elif sort_by == "Likes":
@@ -332,20 +332,15 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         filtered_df = filtered_df.sort_values('shares', ascending=False)
     elif sort_by == "Comments":
         filtered_df = filtered_df.sort_values('comments', ascending=False)
-    #elif sort_by == "Investment":
-     #   filtered_df = filtered_df.sort_values('cost', ascending=False)
     
     # Display filtered results
     if not filtered_df.empty:
-        # Select columns to display
-        display_columns = ['name', 'platform', 'post_type', 'views']
+        # Select columns to display - Include username column
+        display_columns = ['name', 'username', 'platform', 'post_type', 'views']
         
         # Add engagement metrics if enabled
         if sharing_settings.get('include_engagement_metrics', True):
             display_columns.extend(['likes', 'shares', 'comments'])
-        
-        #if sharing_settings.get('include_costs', False):
-         #   display_columns.append('cost')
         
         if 'post_url' in filtered_df.columns and any(not pd.isna(url) for url in filtered_df['post_url']):
             display_columns.append('post_url')
@@ -356,10 +351,10 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         # Rename columns for display
         column_map = {
             'name': 'Name',
+            'username': 'Username',  # Map username to Username
             'platform': 'Platform',
             'post_type': 'Post Type', 
             'views': 'Views',
-            #'cost': 'Investment (₹)',
             'post_url': 'Post URL',
             'likes': 'Likes',
             'shares': 'Shares',
@@ -372,9 +367,6 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         if 'Views' in filtered_display_df.columns:
             filtered_display_df['Views'] = filtered_display_df['Views'].apply(lambda x: f"{x:,}")
         
-        #if 'Investment (₹)' in filtered_display_df.columns:
-         #   filtered_display_df['Investment (₹)'] = filtered_display_df['Investment (₹)'].apply(lambda x: f"₹{x:,.2f}")
-        
         if 'Likes' in filtered_display_df.columns:
             filtered_display_df['Likes'] = filtered_display_df['Likes'].apply(lambda x: f"{x:,}")
         
@@ -384,16 +376,14 @@ if sharing_settings.get('include_influencer_details', True) and campaign['influe
         if 'Comments' in filtered_display_df.columns:
             filtered_display_df['Comments'] = filtered_display_df['Comments'].apply(lambda x: f"{x:,}")
         
-        # Calculate filtered totals
+        # Calculate filtered totals - Include Username in totals row
         filtered_totals = {
             'Name': 'TOTAL',
+            'Username': '',
             'Platform': '',
             'Post Type': '',
             'Views': f"{filtered_df['views'].sum():,}"
         }
-        
-        #if 'Investment (₹)' in filtered_display_df.columns:
-         #   filtered_totals['Investment (₹)'] = f"₹{filtered_df['cost'].sum():,.2f}"
         
         if 'Likes' in filtered_display_df.columns:
             filtered_totals['Likes'] = f"{filtered_df['likes'].sum():,}"

@@ -43,11 +43,13 @@ if 'current_campaign_id' not in st.session_state:
 # Initialize form fields in session state if they don't exist
 if 'form_name' not in st.session_state:
     st.session_state.form_name = ""
+if 'form_username' not in st.session_state:  # Add username initialization
+    st.session_state.form_username = ""
 if 'form_platform' not in st.session_state:
     st.session_state.form_platform = "Instagram"
 if 'form_post_type' not in st.session_state:
     st.session_state.form_post_type = "Post"
-if 'form_post_url' not in st.session_state:  # Add the post_url initialization
+if 'form_post_url' not in st.session_state:
     st.session_state.form_post_url = ""
 if 'form_views' not in st.session_state:
     st.session_state.form_views = 0
@@ -68,9 +70,10 @@ def save_campaign_data():
 def reset_form_fields():
     """Reset all form fields to defaults"""
     st.session_state.form_name = ""
+    st.session_state.form_username = ""  # Reset username field
     st.session_state.form_platform = "Instagram"
     st.session_state.form_post_type = "Post"
-    st.session_state.form_post_url = ""  # Reset the post_url field
+    st.session_state.form_post_url = ""
     st.session_state.form_views = 0
     st.session_state.form_likes = 0
     st.session_state.form_shares = 0
@@ -304,23 +307,25 @@ else:
                 cols = st.columns(2)
                 with cols[0]:
                     name = st.text_input("Influencer Name", value=st.session_state.form_name, key="name_input")
+                    username = st.text_input("Username (e.g. @username)", value=st.session_state.form_username, key="username_input")
                     platform = st.selectbox(
                         "Platform", 
-                        ["Instagram", "Facebook", "YouTube"],
-                        index=["Instagram", "Facebook", "YouTube"].index(st.session_state.form_platform),
+                        ["Instagram", "Facebook", "YouTube", "Twitter", "TikTok"],
+                        index=["Instagram", "Facebook", "YouTube", "Twitter", "TikTok"].index(st.session_state.form_platform) 
+                        if st.session_state.form_platform in ["Instagram", "Facebook", "YouTube", "Twitter", "TikTok"] else 0,
                         key="platform_input"
                     )
                     post_type = st.selectbox(
                         "Post Type", 
-                        ["Post", "Reel", "Video"],
-                        index=["Post", "Reel", "Video"].index(st.session_state.form_post_type),
+                        ["Post", "Reel", "Video", "Story", "Tweet"],
+                        index=["Post", "Reel", "Video", "Story", "Tweet"].index(st.session_state.form_post_type)
+                        if st.session_state.form_post_type in ["Post", "Reel", "Video", "Story", "Tweet"] else 0,
                         key="post_type_input"
-                    )
-                    # Add the post URL field here
-                    post_url = st.text_input("Post URL (optional)", value=st.session_state.form_post_url, key="post_url_input")
+                    )   
                 
                 with cols[1]:
                     views = st.number_input("Views", min_value=0, step=1000, value=st.session_state.form_views, key="views_input")
+                    post_url = st.text_input("Post URL (optional)", value=st.session_state.form_post_url, key="post_url_input")
                 
                 # Add engagement metrics
                 st.subheader("Engagement Metrics")
@@ -342,9 +347,10 @@ else:
                     new_influencer = {
                         "id": new_influencer_id,
                         "name": name,
+                        "username": username,  # Add username to the influencer data
                         "platform": platform,
                         "post_type": post_type,
-                        "post_url": post_url,  # Include post_url in the influencer data
+                        "post_url": post_url,
                         "views": int(views),
                         "likes": int(likes),
                         "shares": int(shares),
@@ -380,6 +386,7 @@ else:
                 # Calculate totals
                 totals = {
                     'name': 'TOTAL',
+                    'username': '',
                     'platform': '',
                     'post_type': '',
                     'views': influencer_df['views'].sum(),
@@ -394,26 +401,28 @@ else:
                 # Add totals row
                 display_df = pd.concat([display_df, pd.DataFrame([totals])], ignore_index=True)
                 
-                # Format the table - removing cost field
-                display_df = display_df[['name', 'platform', 'post_type', 'views', 'likes', 'shares', 'comments']]
+                # Format the table - including username field
+                display_df = display_df[['name', 'username', 'platform', 'post_type', 'views', 'likes', 'shares', 'comments']]
                 
                 st.dataframe(display_df, use_container_width=True)
                 
                 # Individual influencer details with edit options
                 st.subheader("Influencer Details")
                 for i, influencer in enumerate(current_campaign["influencers"]):
-                    with st.expander(f"{influencer['name']} - {influencer['platform']}"):
+                    with st.expander(f"{influencer['name']} - {influencer.get('username', '')}"):
                         cols = st.columns(2)
                         
                         # Display influencer details
                         with cols[0]:
+                            if influencer.get('username'):
+                                st.write(f"**Username:** {influencer['username']}")
+                            st.write(f"**Platform:** {influencer['platform']}")
                             st.write(f"**Post Type:** {influencer['post_type']}")
-                            st.write(f"**Views:** {influencer['views']:,}")
-                            # Display post URL if it exists
                             if influencer.get('post_url'):
                                 st.write(f"**Post URL:** [{influencer['post_url']}]({influencer['post_url']})")
                         
                         with cols[1]:
+                            st.write(f"**Views:** {influencer['views']:,}")
                             # Engagement metrics
                             st.write(f"**Likes:** {influencer.get('likes', 0):,}")
                             st.write(f"**Shares:** {influencer.get('shares', 0):,}")
@@ -519,6 +528,7 @@ else:
                     for inf in current_campaign["influencers"]:
                         data_row = {
                             "Influencer": inf["name"],
+                            "Username": inf.get("username", ""),
                             "Platform": inf["platform"],
                             "Post Type": inf["post_type"],
                             "Views": f"{inf['views']:,}",
@@ -536,6 +546,7 @@ else:
                     # Calculate and add totals row
                     totals_row = {
                         "Influencer": "TOTAL",
+                        "Username": "",
                         "Platform": "",
                         "Post Type": "",
                         "Views": f"{sum(inf['views'] for inf in current_campaign['influencers']):,}",
