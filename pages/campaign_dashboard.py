@@ -288,8 +288,8 @@ else:
         st.subheader(f"Showing {len(filtered_df)} Influencers")
         
         # Create a clean display dataframe
-        display_df = filtered_df[['name', 'platform', 'post_type', 'views', 'likes', 'shares', 'comments']]
-        display_df.columns = ['Name', 'Platform', 'Post Type', 'Views', 'Likes', 'Shares', 'Comments']
+        display_df = filtered_df[['name', 'username', 'platform', 'post_type', 'views', 'likes', 'shares', 'comments']]
+        display_df.columns = ['Name', 'Username', 'Platform', 'Post Type', 'Views', 'Likes', 'Shares', 'Comments']
         
         # Format numeric columns
         display_df['Views'] = display_df['Views'].apply(lambda x: f"{x:,}")
@@ -300,6 +300,7 @@ else:
         # Calculate totals row
         totals = {
             'Name': 'TOTAL',
+            'Username': '',
             'Platform': '',
             'Post Type': '',
             'Views': f"{filtered_df['views'].sum():,}",

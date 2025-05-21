@@ -53,20 +53,22 @@ def save_campaign(campaign_data):
 def save_influencer(influencer_data):
     """Save influencer data to Supabase with only the fields in your schema"""
     # For influencer ID, also use numeric ID
-    #changed
     influencer_id = influencer_data.get('id')
     if not influencer_id or not isinstance(influencer_id, int):
         influencer_id = generate_numeric_id()
+    
+    # Print for debugging
+    print(f"Saving influencer with username: {influencer_data.get('username', 'No username')}")
     
     # Format the data for Supabase
     supabase_influencer = {
         'id': influencer_id,
         'campaign_id': influencer_data.get('campaign_id'),
         'name': influencer_data.get('name'),
+        'username': influencer_data.get('username', ''),  # Ensure username is included
         'platform': influencer_data.get('platform'),
         'post_type': influencer_data.get('post_type'),
         'views': influencer_data.get('views', 0),
-        'cost': influencer_data.get('cost', 0),
         'likes': influencer_data.get('likes', 0),
         'shares': influencer_data.get('shares', 0),
         'comments': influencer_data.get('comments', 0)
@@ -76,9 +78,21 @@ def save_influencer(influencer_data):
     if 'post_url' in influencer_data:
         supabase_influencer['post_url'] = influencer_data.get('post_url', '')
     
-    # Insert or update influencer
-    result = supabase.table('influencers').upsert(supabase_influencer).execute()
-    return influencer_id
+    # Remove cost field if it's not in the table schema
+    if 'cost' in supabase_influencer:
+        del supabase_influencer['cost']
+    
+    # Print for debugging
+    print(f"Inserting/updating influencer record: {supabase_influencer}")
+    
+    try:
+        # Insert or update influencer
+        result = supabase.table('influencers').upsert(supabase_influencer).execute()
+        print(f"Database operation result: {result}")
+        return influencer_id
+    except Exception as e:
+        print(f"Error saving influencer: {str(e)}")
+        raise
 
 def get_campaigns():
     """Get all campaigns from Supabase"""
@@ -89,6 +103,11 @@ def get_campaigns():
         campaign_id = campaign['id']
         # Get influencers for this campaign
         influencers_response = supabase.table('influencers').select('*').eq('campaign_id', campaign_id).execute()
+        
+        # Print for debugging
+        print(f"Retrieved {len(influencers_response.data)} influencers for campaign {campaign_id}")
+        for inf in influencers_response.data:
+            print(f"Influencer: {inf.get('name')}, Username: {inf.get('username', 'No username')}")
         
         campaigns[str(campaign_id)] = {  # Convert ID to string for dictionary key
             'id': campaign_id,
