@@ -66,7 +66,7 @@ with tab1:
         st.code(current_token, language="text")
         
         # Generate full shareable link with domain
-        full_share_link = f"https://ltcomedia.streamlit.app/client_view?token={current_token}"
+        full_share_link = f"https://campaign.ltco.media/client_view?token={current_token}"
         
         # Display link
         st.subheader("Shareable Link")
