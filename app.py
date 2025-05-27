@@ -459,7 +459,7 @@ else:
             st.write("Your clients can view a read-only version of this campaign using the following:")
             
             # Generate full shareable link with domain
-            full_share_link = f"https://ltcomedia.streamlit.app/client_view?token={current_campaign['share_token']}"
+            full_share_link = f"https://campaign.ltco.media/client_view?token={current_campaign['share_token']}"
 
             # Display the link in a more user-friendly way
             st.subheader("Shareable Link")
