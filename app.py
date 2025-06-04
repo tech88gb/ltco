@@ -82,7 +82,7 @@ def reset_form_fields():
 # Main app header
 st.title("Campaign Manager")
 
-# Sidebar for navigation
+# Sidebar for navigations
 with st.sidebar:
     st.header("Navigation")
     
